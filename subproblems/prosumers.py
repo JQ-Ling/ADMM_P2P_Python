@@ -28,6 +28,7 @@ def subproblem_prosumer(Param, Pout_aux, user_id, lamda_u, rho_u):
 
     m = Model(f"Prosumer_{u}")
     m.Params.OutputFlag = 0
+    m.setParam(GRB.Param.Threads, 4)
 
     # === Variables ===
     nload   = m.addVars(h, lb=-GRB.INFINITY,    name="nload")
