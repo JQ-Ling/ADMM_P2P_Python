@@ -1,16 +1,15 @@
 {
     "config name": "config_testing_1",
-    "batch_size": 5,
-    "primal_pred": "D:/Jacky/Python/JKFYP/GRU/primal_pred_PL_FT5.npy",
-    "sce_start": 1,
-    "iter_save": 50,
-    "dual_pred": "D:/Jacky/Python/JKFYP/GRU/dual_pred_PL_FT1.npy",
-    "number of decisions": 4,
-    "testdataset": "D:/Jacky/Julia-vscode/ADMM_P2P/Output/TC1_LP_PrioGO_fix_test_20",
-    "ADMM_ver": "D:/Jacky/Python/ADMM_P2P_Python/main/ADMM_fcn_TC1_LP_PrioGO.jl",
-    "is_csv": false,
-    "last_processed_index": 5,
     "project_name": "new collection testing",
+    "sce_start": 1,
+    "sce_end": 10,
+    "last_processed_index": 0,
+    "iter_save": 50,
+    "number of decisions": 4,
+    "is_csv": false,
     "save_csv": true,
-    "sce_end": 20
+    "ADMM_ver": "D:/Jacky/Python/ADMM_P2P_Python/main/ADMM_fcn_TC1_LP_PrioGO.jl",
+    "testdataset": "D:/Jacky/Julia-vscode/ADMM_P2P/Output/TC1_LP_PrioGO_fix_test_20",
+    "primal_pred": "D:/Jacky/Python/JKFYP/GRU/primal_pred_PL_FT5.npy",
+    "dual_pred": "D:/Jacky/Python/JKFYP/GRU/dual_pred_PL_FT1.npy"
 }

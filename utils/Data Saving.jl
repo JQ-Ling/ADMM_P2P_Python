@@ -142,45 +142,11 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     open("D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config["config name"]).json", "w") do f
         JSON.print(f, config, 4)
     end
-end
+    open("$(dir_path)/config.json", "w") do f
+        JSON.print(f, config, 4)
+    end
 
-function ProfitSave(pc,te)
-    totalP2P = zeros(32,1)
-    costN = zeros(32,1)
-    costNEM = zeros(32,1)
-    costP2P = zeros(32,1)
-    costP2P_TNB = zeros(32,1)
-    reduce_P2P = zeros(32,1)
-    reduce_NEM = zeros(32,1)
-
-    totalP2P = pc[1:32,:]
-    costN = pc[1*32+1:2*32,:]
-    costNEM =  pc[2*32+1:3*32,:]
-    costP2P =  pc[3*32+1:4*32,:]
-    costP2P_TNB = pc[4*32+1:5*32,:]
-    reduce_P2P = pc[5*32+1:6*32,:]
-    reduce_NEM = pc[6*32+1:7*32,:]
-
-    pc_df = DataFrame(pc, :auto)
-    te_df = DataFrame(te, :auto)
-    tp_df = DataFrame(totalP2P, :auto)
-    cn_df = DataFrame(costN, :auto)
-    cnem_df = DataFrame(costNEM, :auto)
-    cp_df = DataFrame(costP2P, :auto)
-    cpt_df = DataFrame(costP2P_TNB, :auto)
-    rp_df = DataFrame(reduce_P2P, :auto)
-    rn_df = DataFrame(reduce_NEM, :auto)
-
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/Prosumer_cost.csv", pc_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/TNB_earning.csv", te_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/cost from p2p only p2p.csv", tp_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/cost from normal.csv", cn_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/cost from nem.csv", cnem_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/cost from p2p including tnb.csv", cp_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/cost from p2p only tnb.csv", cpt_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/reduction from p2p.csv", rp_df)
-    CSV.write("D:/Jacky/Data Output/ADMM_P2P/Profit/redction from nem.csv", rn_df)
-    
+    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))")
 end
 
 function oneSave(primal, dual, P_decision, G_decision, execution_times, optimal_num, primal_error, dual_error, 
@@ -246,7 +212,7 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         mkpath(joinpath(dir_path, "Profit"))
     end
 
-
+    # Decision Variable
     λ_2d = reshape(train_dual, :, size(train_dual, 4))
     Pout_2d = reshape(train_primal, :, size(train_primal, 4))
     P_decision_2d = reshape(train_P_decision, :, size(train_P_decision, 4))
@@ -254,8 +220,17 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     buy_priority_2d = reshape(buy_priority_all, :, size(buy_priority_all, 3))
     sell_priority_2d = reshape(sell_priority_all, :, size(sell_priority_all, 3))
 
+    # Economic performance 
+    totalP2P    = pc[1:32,:]
+    costN       = pc[1*32+1:2*32,:]
+    costNEM     = pc[2*32+1:3*32,:]
+    costP2P     = pc[3*32+1:4*32,:]
+    costP2P_TNB = pc[4*32+1:5*32,:]
+    reduce_P2P  = pc[5*32+1:6*32,:]
+    reduce_NEM  = pc[6*32+1:7*32,:]
+
     # update every 5 scenarios (storing info for all scenario)
-    if isempty(glob("*.npz", "$(dir_path)/DecisionVariable")) # is the first saving attempt?
+    if isempty(glob("*.npz", "$(dir_path)/DecisionVariable")) # first saving attempt
         pe = train_primal_error
         pr = train_primal_residual
         de = train_dual_error
@@ -270,6 +245,16 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         lp = loc_prosumer_2d
         bp = buy_priority_2d
         sp = sell_priority_2d
+
+        pc_df   = pc 
+        te_df   = te
+        tp_df   = totalP2P
+        cn_df   = costN
+        cnem_df = costNEM
+        cp_df   = costP2P
+        cpt_df  = costP2P_TNB
+        rp_df   = reduce_P2P
+        rn_df   = reduce_NEM
     else
         pe = npzread("$(dir_path)/optimal_iter/primal_err.npz")
         pr = npzread("$(dir_path)/optimal_iter/primal_res.npz")
@@ -300,6 +285,26 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         pdv = [pdv; P_decision_2d]
         bp = [bp; buy_priority_2d]
         sp = [sp; sell_priority_2d]
+
+        pc_df   = Matrix(CSV.read("$(dir_path)/Profit/Prosumer_cost.csv", DataFrame))
+        te_df   = Matrix(CSV.read("$(dir_path)/Profit/TNB_earning.csv", DataFrame))
+        tp_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p only p2p.csv", DataFrame))
+        cn_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from normal.csv", DataFrame))
+        cnem_df = Matrix(CSV.read("$(dir_path)/Profit/cost from nem.csv", DataFrame))
+        cp_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p including tnb.csv", DataFra))
+        cpt_df  = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p only tnb.csv", DataFrame))
+        rp_df   = Matrix(CSV.read("$(dir_path)/Profit/reduction from p2p.csv", DataFrame))
+        rn_df   = Matrix(CSV.read("$(dir_path)/Profit/redction from nem.csv", DataFrame))
+
+        pc_df[:, first:last]    = pc 
+        te_df[:, first:last]    = te
+        tp_df[:, first:last]    = totalP2P
+        cn_df[:, first:last]    = costN
+        cnem_df[:, first:last]  = costNEM
+        cp_df[:, first:last]    = costP2P
+        cpt_df[:, first:last]   = costP2P_TNB
+        rp_df[:, first:last]    = reduce_P2P
+        rn_df[:, first:last]    = reduce_NEM
     end
 
     CSV.write("$(dir_path)/sce_collected_$(sce_start)to$(last).csv", DataFrame([]))
@@ -324,31 +329,15 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         CSV.write("$(dir_path)/infeasible_sce/infeasible_sce_$(sce_start)to$(last)sce.csv", d_infeasible)
     end
 
-    totalP2P = zeros(32,1000)
-    costN = zeros(32,1000)
-    costNEM = zeros(32,1000)
-    costP2P = zeros(32,1000)
-    costP2P_TNB = zeros(32,1000)
-    reduce_P2P = zeros(32,1000)
-    reduce_NEM = zeros(32,1000)
-
-    totalP2P = pc[1:32,:]
-    costN = pc[1*32+1:2*32,:]
-    costNEM =  pc[2*32+1:3*32,:]
-    costP2P =  pc[3*32+1:4*32,:]
-    costP2P_TNB = pc[4*32+1:5*32,:]
-    reduce_P2P = pc[5*32+1:6*32,:]
-    reduce_NEM = pc[6*32+1:7*32,:]
-
-    pc_df = DataFrame(pc, :auto)
-    te_df = DataFrame(te, :auto)
-    tp_df = DataFrame(totalP2P, :auto)
-    cn_df = DataFrame(costN, :auto)
-    cnem_df = DataFrame(costNEM, :auto)
-    cp_df = DataFrame(costP2P, :auto)
-    cpt_df = DataFrame(costP2P_TNB, :auto)
-    rp_df = DataFrame(reduce_P2P, :auto)
-    rn_df = DataFrame(reduce_NEM, :auto)
+    pc_df   = DataFrame(pc_df, :auto)
+    te_df   = DataFrame(te_df, :auto)
+    tp_df   = DataFrame(tp_df, :auto)
+    cn_df   = DataFrame(cn_df, :auto)
+    cnem_df = DataFrame(cnem_df, :auto)
+    cp_df   = DataFrame(cp_df, :auto)
+    cpt_df  = DataFrame(cpt_df, :auto)
+    rp_df   = DataFrame(rp_df, :auto)
+    rn_df   = DataFrame(rn_df, :auto)
 
     CSV.write("$(dir_path)/Profit/Prosumer_cost.csv", pc_df)
     CSV.write("$(dir_path)/Profit/TNB_earning.csv", te_df)
@@ -369,4 +358,9 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     open("D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config["config name"]).json", "w") do f
         JSON.print(f, config, 4)
     end
+    open("$(dir_path)/config.json", "w") do f
+        JSON.print(f, config, 4)
+    end
+
+    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))")
 end

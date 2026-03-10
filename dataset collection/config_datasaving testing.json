@@ -1,0 +1,11 @@
+{
+    "config name": "config_datasaving testing",
+    "project_name": "datasaving testing",
+    "sce_start": 1,
+    "sce_end": 10,
+    "last_processed_index": 0,
+    "iter_save": 50,
+    "number of decisions": 4,
+    "save_csv": false,
+    "ADMM_ver": "D:/Jacky/Python/ADMM_P2P_Python/main/ADMM_fcn_TC1_LP_PrioGO.jl"
+}

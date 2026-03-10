@@ -75,7 +75,7 @@ BranchLimit = BranchLimit_data[!,1] .* 1000
 # set your starting scenario and ending scenario number to generate
 config["last_processed_index"] == 0 ? sce_start = config["sce_start"] : sce_start = config["last_processed_index"] + 1
 sce_end = config["sce_end"]
-tot_sce = sce_end - sce_start + 1
+tot_sce = sce_end - config["sce_start"] + 1
 
 num_dec = config["number of decisions"]
 execution_times = []
