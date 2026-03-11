@@ -146,7 +146,7 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
         JSON.print(f, config, 4)
     end
 
-    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))")
+    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
 end
 
 function oneSave(primal, dual, P_decision, G_decision, execution_times, optimal_num, primal_error, dual_error, 
@@ -291,20 +291,20 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         tp_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p only p2p.csv", DataFrame))
         cn_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from normal.csv", DataFrame))
         cnem_df = Matrix(CSV.read("$(dir_path)/Profit/cost from nem.csv", DataFrame))
-        cp_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p including tnb.csv", DataFra))
+        cp_df   = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p including tnb.csv", DataFrame))
         cpt_df  = Matrix(CSV.read("$(dir_path)/Profit/cost from p2p only tnb.csv", DataFrame))
         rp_df   = Matrix(CSV.read("$(dir_path)/Profit/reduction from p2p.csv", DataFrame))
         rn_df   = Matrix(CSV.read("$(dir_path)/Profit/redction from nem.csv", DataFrame))
 
-        pc_df[:, first:last]    = pc 
-        te_df[:, first:last]    = te
-        tp_df[:, first:last]    = totalP2P
-        cn_df[:, first:last]    = costN
-        cnem_df[:, first:last]  = costNEM
-        cp_df[:, first:last]    = costP2P
-        cpt_df[:, first:last]   = costP2P_TNB
-        rp_df[:, first:last]    = reduce_P2P
-        rn_df[:, first:last]    = reduce_NEM
+        pc_df[:, first:last]    = pc[:, first:last]
+        te_df[:, first:last]    = te[:, first:last]
+        tp_df[:, first:last]    = totalP2P[:, first:last]
+        cn_df[:, first:last]    = costN[:, first:last]
+        cnem_df[:, first:last]  = costNEM[:, first:last]
+        cp_df[:, first:last]    = costP2P[:, first:last]
+        cpt_df[:, first:last]   = costP2P_TNB[:, first:last]
+        rp_df[:, first:last]    = reduce_P2P[:, first:last]
+        rn_df[:, first:last]    = reduce_NEM[:, first:last]
     end
 
     CSV.write("$(dir_path)/sce_collected_$(sce_start)to$(last).csv", DataFrame([]))
@@ -362,5 +362,5 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
         JSON.print(f, config, 4)
     end
 
-    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))")
+    cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
 end
