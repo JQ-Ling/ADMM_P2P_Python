@@ -15,9 +15,9 @@ sce_start = config["sce_start"]
 sce_end = config["sce_end"]
 tot_sce = sce_end - config["sce_start"] + 1
 
-primal_pred_location = "D:/Jacky/Python/JKFYP/GRU/primal_pred_PL_FT5.npy"
+primal_pred_location = joinpath(dataset, "predictions", "primal_pred_post.npy")
 primal_pred = npzread(primal_pred_location)
-dual_pred_location = "D:/Jacky/Python/JKFYP/GRU/dual_pred_PL_FT1.npy"
+dual_pred_location = joinpath(dataset, "predictions", "dual_pred.npy")
 dual_pred = npzread(dual_pred_location)
 
 ######### Scenario data preparation
@@ -100,17 +100,19 @@ for sce in sce_start:sce_end
     push!(termination_go, term_status)
 end 
 for sce in sce_start:sce_end
-    print("Scenario $sce:")
+    println("Scenario $sce:")
     for k in 1:num_user
         if termination_pros[(sce-1)*num_user + k] == MOI.INFEASIBLE
+            println("  Prosumer $k INFEASIBLE")
             continue
         end
         println("  Prosumer $k termination status: ", termination_pros[(sce-1)*num_user + k])
     end
     if termination_go[sce] == MOI.INFEASIBLE
-        println("  INFEASIBLE")
+        println("  Grid Operator INFEASIBLE")
         continue
     end
     println("  Grid Operator termination status: ", termination_go[sce])
     println("--------------------------------------------------")
+    println()
 end
