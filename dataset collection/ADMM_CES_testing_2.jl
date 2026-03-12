@@ -1,6 +1,6 @@
 using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON  
 
-config_name = "config_testing_1"
+config_name = "config_testing_2"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
 config = JSON.parsefile(config_path)
 path = config["project_name"]
