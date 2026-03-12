@@ -72,25 +72,14 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     dr = DataFrame(train_dual_residual, :auto)
     d_obj = DataFrame(train_obj, :auto)
 
-    if last == sce_end
-        CSV.write("$(path)/location/location_user_solar_$(sce_start)to$(last)sce.csv", lps)
-        CSV.write("$(path)/optimal_iter/optimal_iter_$(sce_start)to$(last)sce.csv", d_on)
-        CSV.write("$(path)/optimal_iter/execution_time_$(sce_start)to$(last)sce.csv", d_ex)
-        CSV.write("$(path)/optimal_iter/primal_error_$(sce_start)to$(last)sce.csv", pe)
-        CSV.write("$(path)/optimal_iter/primal_residual_$(sce_start)to$(last)sce.csv", pr)
-        CSV.write("$(path)/optimal_iter/dual_error_$(sce_start)to$(last)sce.csv", de)
-        CSV.write("$(path)/optimal_iter/dual_residual_$(sce_start)to$(last)sce.csv", dr)
-        CSV.write("$(path)/optimal_iter/objective_value_$(sce_start)to$(last)sce.csv", d_obj)
-    else
-        CSV.write("$(path)/location/location_user_solar_$(sce_start)to$(last)sce.csv", lps)
-        CSV.write("$(path)/location/optimal_iter_$(sce_start)to$(last)sce.csv", d_on)
-        CSV.write("$(path)/location/execution_time_$(sce_start)to$(last)sce.csv", d_ex)
-        CSV.write("$(path)/location/primal_error_$(sce_start)to$(last)sce.csv", pe)
-        CSV.write("$(path)/location/primal_residual_$(sce_start)to$(last)sce.csv", pr)
-        CSV.write("$(path)/location/dual_error_$(sce_start)to$(last)sce.csv", de)
-        CSV.write("$(path)/location/dual_residual_$(sce_start)to$(last)sce.csv", dr)
-        CSV.write("$(path)/location/objective_value_$(sce_start)to$(last)sce.csv", d_obj)
-    end
+    CSV.write("$(path)/location/location_user_solar_$(first)to$(last)sce.csv", lps)
+    CSV.write("$(path)/location/optimal_iter_$(first)to$(last)sce.csv", d_on)
+    CSV.write("$(path)/location/execution_time_$(first)to$(last)sce.csv", d_ex)
+    CSV.write("$(path)/location/primal_error_$(first)to$(last)sce.csv", pe)
+    CSV.write("$(path)/location/primal_residual_$(first)to$(last)sce.csv", pr)
+    CSV.write("$(path)/location/dual_error_$(first)to$(last)sce.csv", de)
+    CSV.write("$(path)/location/dual_residual_$(first)to$(last)sce.csv", dr)
+    CSV.write("$(path)/location/objective_value_$(first)to$(last)sce.csv", d_obj)
 
     if infeasible == 1
         d_infeasible = DataFrame(infeasible_sce=infeasible_sce)
