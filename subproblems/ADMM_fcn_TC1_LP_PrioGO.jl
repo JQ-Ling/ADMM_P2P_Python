@@ -33,9 +33,12 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     @variable(Prosumer_model, P_sell[i=1:hour] >= 0)
     @variable(Prosumer_model, Pg_buy[i=1:hour] >= 0)
     @variable(Prosumer_model, Pg_sell[i=1:hour] >= 0)
-    @variable(Prosumer_model, lb_CES[i, num_user] <= P_CES[i=1:hour] <= ub_CES[i, num_user])
-    @variable(Prosumer_model, lb_CESc[i, num_user] <= P_c[i=1:hour] <= ub_CESc[i, num_user])
-    @variable(Prosumer_model, lb_CESd[i, num_user] <= P_d[i=1:hour] <= ub_CESd[i, num_user])
+    # @variable(Prosumer_model, lb_CES[i, num_user] <= P_CES[i=1:hour] <= ub_CES[i, num_user])
+    # @variable(Prosumer_model, lb_CESc[i, num_user] <= P_c[i=1:hour] <= ub_CESc[i, num_user])
+    # @variable(Prosumer_model, lb_CESd[i, num_user] <= P_d[i=1:hour] <= ub_CESd[i, num_user])
+    @variable(Prosumer_model, P_CES[i=1:hour] >= 0)
+    @variable(Prosumer_model, P_c[i=1:hour] >= 0)
+    @variable(Prosumer_model, P_d[i=1:hour] >= 0)
 
     # set_start_value.(P_c, Pout_aux[0*hour+1:1*hour, num_user])
     # set_start_value.(P_d, Pout_aux[1*hour+1:2*hour, num_user])
@@ -43,12 +46,18 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     # set_start_value.(P_sell, Pout_aux[3*hour+1:4*hour, num_user])
 
     # @variable(Prosumer_model, B_charge[1:hour], Bin)  #limit charging or discharging
-    # @variable(Prosumer_model, P_out[i=1:4*hour])
-    # @variable(Prosumer_model, chg_p[i=1:4*hour])
     @variable(Prosumer_model, P_out[i=1:4*hour])
-    @variable(Prosumer_model, chg_p[i=1:4*hour])
+    # @variable(Prosumer_model, chg_p[i=1:4*hour])
 
     ### constraints
+    # Boundary constraints
+    @constraint(Prosumer_model, lb_soc, P_CES .>= lb_CES[:, num_user])
+    @constraint(Prosumer_model, ub_soc, P_CES .<= ub_CES[:, num_user])
+    @constraint(Prosumer_model, lb_qc, P_c .>= lb_CESc[:, num_user])
+    @constraint(Prosumer_model, ub_qc, P_c .<= ub_CES[:, num_user])
+    @constraint(Prosumer_model, lb_qd, P_d .>= lb_CESc[:, num_user])
+    @constraint(Prosumer_model, ub_qd, P_d .<= ub_CES[:, num_user])
+
     # P2P trade hour
     @constraint(Prosumer_model, [i in 1:P2PTrade[1]], P_buy[i] .== 0)
     @constraint(Prosumer_model, [i in P2PTrade[2]:hour], P_buy[i] .== 0)
@@ -61,20 +70,20 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     @constraint(Prosumer_model, Pg_sell + P_sell .== nload .* (B_load[:, num_user] .- 1)) # binary - 1 is to let the constraint take SE (-ve) and convert it into +ve
 
     # SOC of CES (Extn-LP formulation)
-    @constraint(Prosumer_model, [i in 1:hour-1], P_c[i+1] .<= (ub_CES[:, num_user] .- P_CES[i]) ./ η)
-    @constraint(Prosumer_model, P_c[1] .<= (ub_CES[:, num_user] .- P_CES0[num_user]) ./ η)
-    @constraint(Prosumer_model, [i in 1:hour-1], P_d[i+1] .<= (P_CES[i] .- lb_CES[:, num_user]) .* η)
-    @constraint(Prosumer_model, P_d[1] .<= (P_CES0[num_user] .- lb_CES[:, num_user]) .* η)
-    @constraint(Prosumer_model, P_d .<= ub_CESd[:, num_user] .- (ub_CESd[:, num_user] ./ ub_CESc[:, num_user]) .* P_c)
-    @constraint(Prosumer_model, P_CES[1] == P_CES0[num_user])
-    @constraint(Prosumer_model, P_CES[end] == P_CES[1])
-    @constraint(Prosumer_model, [i in 1:hour-1], P_CES[i+1] .== P_CES[i] + (η * P_c[i]) - (P_d[i] / η))
-    @constraint(Prosumer_model, P_CES[1] .== P_CES[end] + (η * P_c[end]) - (P_d[end] / η))
+    @constraint(Prosumer_model, [i in 1:hour-1],    P_c[i+1] .<= (ub_CES[i, num_user] .- P_CES[i]) ./ η)
+    @constraint(Prosumer_model,                     P_c[1] .<= (ub_CES[1, num_user] .- P_CES0[num_user]) ./ η)
+    @constraint(Prosumer_model, [i in 1:hour-1],    P_d[i+1] .<= (P_CES[i] .- lb_CES[i, num_user]) .* η)
+    @constraint(Prosumer_model,                     P_d[1] .<= (P_CES0[num_user] .- lb_CES[1, num_user]) .* η)
+    @constraint(Prosumer_model,                     P_d .<= ub_CESd[:, num_user] .- (ub_CESd[:, num_user] ./ ub_CESc[:, num_user]) .* P_c)
+    @constraint(Prosumer_model,                     P_CES[1] == P_CES0[num_user])
+    @constraint(Prosumer_model,                     P_CES[end] == P_CES[1])
+    @constraint(Prosumer_model, [i in 1:hour-1],    P_CES[i+1] .== P_CES[i] + (η * P_c[i]) - (P_d[i] / η))
+    @constraint(Prosumer_model,                     P_CES[1] .== P_CES[end] + (η * P_c[end]) - (P_d[end] / η))
 
     # Primal definition
     # @constraint(Prosumer_model, P_out .== [P_c; P_d; P_buy; P_sell; Pg_buy; Pg_sell])
     @constraint(Prosumer_model, P_out .== [P_c; P_d; P_buy; P_sell])
-    @constraint(Prosumer_model, P_out .== Pout_aux[:, num_user] + chg_p)
+    # @constraint(Prosumer_model, P_out .== Pout_aux[:, num_user] + chg_p)
 
     # Objective 
     f_1 = sum(P_buy .* PI_buy[num_user, :] + P_sell .* PI_sell[num_user, :])
@@ -83,8 +92,7 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
 
     @objective(Prosumer_model, Min, f_1 + f_2 + f_3
                                     + sum(-1 * lamda_u[:, num_user, num_iteration] .* P_out
-                                          +
-                                          0.5 * rho_u * (Pout_aux[:, num_user] - P_out) .^ 2)) # define objective fucntion for subproblem
+                                          + 0.5 * rho_u * (Pout_aux[:, num_user] - P_out) .^ 2)) # define objective fucntion for subproblem
 
     optimize!(Prosumer_model) # calculate the problem
     obj_Prosumer = objective_value(Prosumer_model) # obtain the optimal value of objective function, cost
@@ -93,13 +101,14 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     bat_lv = value.(P_CES)
     Charge = value.(P_c)
     Discharge = value.(P_d)
+    P2P_buy = value.(P_buy)
+    P2P_sell = value.(P_sell)
+    # B_charge = value.(B_charge)    
+    
     # remove small numerical error 
     Charge[findall(x->x<1e-4, Charge)] .= 0
     Discharge[findall(x->x<1e-4, Discharge)] .= 0
 
-    P2P_buy = value.(P_buy)
-    P2P_sell = value.(P_sell)
-    # B_charge = value.(B_charge)
     # Pout = [Charge; Discharge; P2P_buy; P2P_sell; Grid_buy; Grid_sell]
     Pout = [Charge; Discharge; P2P_buy; P2P_sell]
     P_decision = [Grid_buy; Grid_sell; bat_lv; Charge; Discharge; P2P_buy; P2P_sell; P2P_sell]  #add X1 and X2 binaries into primal to allow partial linear relaxation on subproblem
@@ -137,13 +146,10 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
     @variable(Grid_model, net_load_hour[i=1:hour, j=1:num_bus])
     @variable(Grid_model, P_br[i=1:hour, j=1:num_branch])
     # @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user], start = P_out[i, j])
-    # @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user] >= 0)
-    # @variable(Grid_model, chg_p[i=1:4*hour, j=1:num_user])
-    @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user] >= 0)
-    @variable(Grid_model, chg_p[i=1:4*hour, j=1:num_user])
+    @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user])
 
     # Consensus primal variable
-    @constraint(Grid_model, P_out_aux .== P_out + chg_p)
+    # @constraint(Grid_model, P_out_aux .== P_out + chg_p)
 
     # P2P trade hour
     @constraint(Grid_model, [i in 2*hour+1:2*hour+P2PTrade[1]], P_out_aux[i, :] .== 0)

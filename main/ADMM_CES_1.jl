@@ -4,7 +4,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ
 # using StatsBase
 
 # Includes
-include("ADMM_fcn_TC1_LP_PrioGO.jl")
+include("../subproblems/ADMM_fcn_TC1.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -55,7 +55,7 @@ loc_CES[2] = 1
 ########################################################################################################
 
 # set your starting scenario and ending scenario number to generate
-sce_start, sce_end = 1000, 1000
+sce_start, sce_end = 1, 1
 
 tc2, tc3 = 1, 2
 count_tc2, count_tc3 = 999, 1
@@ -183,8 +183,8 @@ TNBearning_all = zeros(5, 1000)
         ####################################################################################################
 
         # (8) Battery capacity
-        # BatteryCap = Int(ceil(2 * maximum(solar)))
-        BatteryCap = 2
+        BatteryCap = Int(ceil(2 * maximum(solar)))
+        # BatteryCap = 2
         
         ####################Load Scenario GRU Pred ###########################
         # EOpOb_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/EOpOb.csv"
@@ -231,7 +231,7 @@ TNBearning_all = zeros(5, 1000)
         beta_tnb = 1 #priority index for trading in local market
         P_CES0 = (BatteryCap / 2) * ones(num_user)
         P2PTrade = [16 38]
-        efficiency_CES = 1
+        efficiency_CES = 0.9
 
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
@@ -336,13 +336,14 @@ TNBearning_all = zeros(5, 1000)
             # @time for k in 1:num_user  #calculate 15 prosumer problem in parallel
             @time Threads.@threads for k in 1:num_user_a    #uncomment for parallel computing of Julia operation
                 start_time = time()
-                obj_Prosumer, P_decision_Prosumer, Pout_Prosumer, ui_prosumer = Subproblem_Prosumer(Param_Prosumer, Pout_aux, k, λ, iteration_num - 1) #prosumer problem takes in new Pout_aux and lambda
+                # obj_Prosumer, P_decision_Prosumer, Pout_Prosumer, ui_prosumer = Subproblem_Prosumer(Param_Prosumer, Pout_aux, k, λ, iteration_num - 1) #prosumer problem takes in new Pout_aux and lambda
+                obj_Prosumer, P_decision_Prosumer, Pout_Prosumer = Subproblem_Prosumer(Param_Prosumer, Pout_aux, k, λ, iteration_num - 1) #prosumer problem takes in new Pout_aux and lambda
                 times_this_iter[k] = time() - start_time
 
                 Pout[:, k] = Pout_Prosumer
                 cost[1, k] = obj_Prosumer
                 Prosumer_decision[:, k] = P_decision_Prosumer
-                ui_all[4:end, :, k] = ui_prosumer
+                # ui_all[4:end, :, k] = ui_prosumer
             end
 
             push!(subproblem_times, times_this_iter)
@@ -357,12 +358,13 @@ TNBearning_all = zeros(5, 1000)
             end
 
             # obj_Grid, Pout_Grid, P_decision_Grid, Grid_CES = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
-            obj_Grid, Pout_Grid, P_decision_Grid, ui_grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
+            # obj_Grid, Pout_Grid, P_decision_Grid, ui_grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
+            obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
             Pout_aux = Pout_Grid
             Grid_decision = P_decision_Grid
             Pout_aux_all[:, :, iteration_num] = Pout_aux
             # Grid_CES_all[:, :, iteration_num] = Grid_CES
-            ui_all[1:3, :, :] = ui_grid
+            # ui_all[1:3, :, :] = ui_grid
 
             λ[:, :, iteration_num] = λ[:, :, iteration_num-1] + rho_u * (Pout_aux - Pout) # update λ
 
@@ -376,8 +378,8 @@ TNBearning_all = zeros(5, 1000)
             append!(obj_p, obj(Pout, Prosumer_decision, buy_priority, sell_priority, beta_tnb))
 
             println("----------------------------------------------------------------")
-            println(" Primal Error is ", primal_error[end])
-            println(" Dual Error is ", dual_error[end])
+            println(" Primal Error is ", primal_residual[end])
+            println(" Dual Error is ", dual_residual[end])
             println(" Number of iterations is ", iteration_num)
             println(" Scenario number: ", sce)
             println("----------------------------------------------------------------")
@@ -395,21 +397,25 @@ TNBearning_all = zeros(5, 1000)
         end
         push!(converg_num, iteration_num - 1)
 
-        println("#######################################")
-        println("Finished sce: ", sce)
-        println("Time now: ", now())
-        println("#######################################")
-
     end # for execution_times
+    println("#######################################")
+    println(" Finished sce: ", sce)
+    println(" Primal Error is ", primal_residual[end])
+    println(" Dual Error is ", dual_residual[end])
+    println(" Number of iterations is ", iteration_num)
+    println(" Time taken: ", elapsed_time)
+    println("#######################################")
+
     # draw the results
-    # peplot = plot(primal_error, xlabel="Number of iterations", ylabel="Primal Error", yscale=:log10, title="ADMM", size=(500, 400))
-    # deplot = plot(dual_error, xlabel="Number of iterations", ylabel="Dual Error", yscale=:log10, title="ADMM", size=(500, 400))
-    prplot = plot(primal_residual, xlabel="Number of iterations", ylabel="Primal Residual", yscale=:log10, title="ADMM", size=(500, 400))
-    drplot = plot(dual_residual, xlabel="Number of iterations", ylabel="Dual Residual", yscale=:log10, title="ADMM", size=(500, 400), label=elapsed_time)
-    # display(peplot)
-    # display(deplot)
-    display(prplot)
-    display(drplot)
+    p = plot(primal_residual, 
+                label="Primal Residual", 
+                xlabel="Number of iterations", 
+                ylabel="Residual", 
+                yscale=:log10, 
+                title="ADMM Convergence", 
+                size=(600, 400))
+    plot!(p, dual_residual, label="Dual Residual")
+    display(p)
     # display(plot(ctp, xlabel="Number of iterations", ylabel="Convergence Threshold for Primal", yscale=:log10, title="ADMM", size=(500, 400)))
     # display(plot(ctd, xlabel="Number of iterations", ylabel="Convergence Threshold for Dual", yscale=:log10, title="ADMM", size=(500, 400)))
     # plot(rhov, xlabel="Number of iterations", ylabel="step size", yscale=:log10, title="ADMM", size=(500, 400))
@@ -462,10 +468,7 @@ TNBearning_all = zeros(5, 1000)
     ##################################################################################################################
     # Price calculation #
     ##################################################################################################################
-    ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
-    # println("Max solar peak = ", maximum(solar))
-    # check_solution_feasibility(Param_Prosumer, Prosumer_decision, Pout, Pout_aux)
-    # KKT_check(Prosumer_decision, Pout, Pout_aux, reshape(λ[:,:,iteration_num-1],size(λ)[1:2]), ui_all, Param_Grid)
+    # ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
 
     ##################################################################################################################
     # Data Saving one scenario #

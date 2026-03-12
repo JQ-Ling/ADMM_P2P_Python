@@ -18,7 +18,7 @@ end
 
 function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, path, config)
+    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, path, config, Param_Prosumer, Param_Grid)
 
     if isdir(path)
         println("Folder exists: ", path)
@@ -147,6 +147,9 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
+
+    CSV.write("$(dir_path)/Param_Prosumer.csv", Param_Prosumer)
+    CSV.write("$(dir_path)/Param_Grid.csv", Param_Grid)
 end
 
 function oneSave(primal, dual, P_decision, G_decision, execution_times, optimal_num, primal_error, dual_error, 
@@ -198,7 +201,7 @@ end
 
 function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, dir_path, config)
+    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, dir_path, config, Param_Prosumer, Param_Grid)
 
     if isdir(dir_path)
         println("Folder exists: ", dir_path)
@@ -363,4 +366,7 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
+
+    CSV.write("$(dir_path)/Param_Prosumer.csv", Param_Prosumer)
+    CSV.write("$(dir_path)/Param_Grid.csv", Param_Grid)
 end

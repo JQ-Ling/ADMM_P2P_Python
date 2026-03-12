@@ -510,11 +510,11 @@ TNBearning_all = zeros(5,tot_sce)
         if config["save_csv"]
             savetoCSV(1+(sce-5),sce, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all, 
                 execution_times, optimal_num, config["sce_start"], sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-                train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config)
+                train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config, Param_Prosumer, Param_Grid)
         else
             savetoNPZ(1+(sce-5),sce, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all, 
             execution_times, optimal_num, config["sce_start"], sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-            train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config)
+            train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config, Param_Prosumer, Param_Grid)
         end
         infeasible = 0
 
