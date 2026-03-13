@@ -420,7 +420,8 @@ TNBearning_all = zeros(5,tot_sce)
             xlabel="Number of iterations", 
             ylabel="Residual", 
             yscale=:log10, 
-            title="ADMM Convergence - Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds", 
+            title="$(config["project_name"]) - Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds", 
+            titlefontsize=8,
             size=(600, 400))
     plot!(p, dual_residual, label="Dual Residual")
     display(p)

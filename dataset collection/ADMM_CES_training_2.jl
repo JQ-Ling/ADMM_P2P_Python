@@ -412,18 +412,20 @@ TNBearning_all = zeros(5,tot_sce)
         println("#######################################")
         println("Finished sce: ", sce)
         println("#######################################")
-
-        p = plot(primal_residual, 
-                label="Primal Residual", 
-                xlabel="Number of iterations", 
-                ylabel="Residual", 
-                yscale=:log10, 
-                title="ADMM Convergence", 
-                size=(600, 400))
-        plot!(p, dual_residual, label="Dual Residual")
-        display(p)
-        
+       
     end # for execution_times
+
+    p = plot(primal_residual, 
+            label="Primal Residual", 
+            xlabel="Number of iterations", 
+            ylabel="Residual", 
+            yscale=:log10, 
+            title="$(config["project_name"]) - Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds", 
+            titlefontsize=8,
+            size=(600, 400))
+    plot!(p, dual_residual, label="Dual Residual")
+    display(p)
+
     execution_times[(sce-1)%5 + 1] = elapsed_time
     prosumer_cost, TNBearn = ProfitCal(Prosumer_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
     prosumer_cost_all[:,sce] = prosumer_cost
@@ -458,12 +460,12 @@ TNBearning_all = zeros(5,tot_sce)
     if sce % 5 == 0
        if config["save_csv"]
             savetoCSV(1+(sce-5),sce, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all, 
-                execution_times, optimal_num, config["sce_start"], sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-                train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config)
+                execution_times, optimal_num, sce_start, config["sce_start"], infeasible, infeasible_sce, train_primal_error, train_primal_residual,
+                train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config, Param_Prosumer, Param_Grid)
         else
             savetoNPZ(1+(sce-5),sce, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all, 
-            execution_times, optimal_num, config["sce_start"], sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-            train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config)
+            execution_times, optimal_num, sce_start, config["sce_start"], infeasible, infeasible_sce, train_primal_error, train_primal_residual,
+            train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all,prosumer_cost_all,TNBearning_all, dir_path, config, Param_Prosumer, Param_Grid)
         end
         infeasible = 0
 

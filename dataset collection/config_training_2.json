@@ -1,10 +1,10 @@
 {
-    "config name": "config_training_1",
+    "config name": "config_training_2",
     "last_processed_index": 20,
     "ADMM_ver": "D:/Jacky/Python/ADMM_P2P_Python/subproblems/ADMM_fcn_TC1_LP_PrioGO.jl",
     "number of decisions": 4,
     "sce_start": 1,
-    "project_name": "LP_PrioGO_test_20_OldSame_AMD",
+    "project_name": "LP_PrioGO_test_20_OldSame_AMD_noThreads",
     "save_csv": false,
     "iter_save": 50,
     "sce_end": 20

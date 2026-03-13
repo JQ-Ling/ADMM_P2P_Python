@@ -210,17 +210,18 @@ TNBearning_all = zeros(5,tot_sce)
 
         #################### Load Scenario AI Pred ###########################
         ## GRU
-        if config["primal_pred_loc"] != false
+        if config["injection"]
             primal_pred_location = config["primal_pred_loc"]
+            primal_pred = npzread(primal_pred_location)
+            Poutaux_optimal = primal_pred[sce,:,:]
         end
-        primal_pred = npzread(primal_pred_location)
-        Poutaux_optimal = primal_pred[sce,:,:]
-        if config["dual_pred_loc"] != false
+        
+        if config["injection"]
             dual_pred_location = config["dual_pred_loc"]
+            dual_pred = npzread(dual_pred_location)
+            λ_optimal = dual_pred[sce,:,:]
         end
-        dual_pred = npzread(dual_pred_location)
-        λ_optimal = dual_pred[sce,:,:]
-
+        
         # Poutaux_optimal = [Poutaux_optimal[97:end,:]; Poutaux_optimal[1:96,:]]
 
         # ## Transformer
@@ -376,11 +377,11 @@ TNBearning_all = zeros(5,tot_sce)
             if primal_residual[end] == 1
                 primal_residual =[]
             end
-            if iteration_num == AI_inject_iter  #take in AI Pout_aux pred on 11th loop
+            if iteration_num == AI_inject_iter  
                 pr_ba = [primal_residual[end]]
                 dr_ba = [dual_residual[end]]
                 iter_ba = [length(primal_residual)]
-                if config["injection_pros"]
+                if config["injection_pros"] && config["injection"]
                     λ[:,:,iteration_num-1] = λ_optimal
                     Pout_aux = Poutaux_optimal
                     Pout_aux_all[:, :, iteration_num-1] = Pout_aux
@@ -408,7 +409,7 @@ TNBearning_all = zeros(5,tot_sce)
             Pout_all[:, :, iteration_num] = Pout
             P_decision_all[:, :, iteration_num] = Prosumer_decision
 
-            if iteration_num == AI_inject_iter && !config["injection_pros"]
+            if iteration_num == AI_inject_iter && !config["injection_pros"] && config["injection"]
                 λ_temp = λ[:,:,iteration_num-1]
                 λ[:,:,iteration_num-1] = λ_optimal
                 Pout = Poutaux_optimal
@@ -448,6 +449,7 @@ TNBearning_all = zeros(5,tot_sce)
             println(" Dual Error is ", dual_error[end])
             println(" Number of iterations is ", iteration_num)
             println(" Scenario number: ", sce)
+            config["injection"] ? println(" (AI Injection at iteration ", AI_inject_iter, ")") : println()
             println("----------------------------------------------------------------")
             append!(ctp, converg_threshold_primal)
             append!(ctd, converg_threshold_dual)
@@ -468,17 +470,28 @@ TNBearning_all = zeros(5,tot_sce)
         println("Finished sce: ", sce)
         println("#######################################")
 
-        p = plot(primal_residual, 
-                label="Primal Residual", 
-                xlabel="Number of iterations", 
-                ylabel="Residual", 
-                yscale=:log10, 
-                title="ADMM Convergence", 
-                size=(600, 400))
-        plot!(p, dual_residual, label="Dual Residual")
-        display(p)
+        
 
     end # for execution_times
+    println("#######################################")
+    println(" Finished sce: ", sce)
+    println(" Primal Error is ", primal_residual[end])
+    println(" Dual Error is ", dual_residual[end])
+    println(" Number of iterations is ", iteration_num)
+    println(" Time taken: ", elapsed_time)
+    println("#######################################")
+
+    p = plot(primal_residual, 
+            label="Primal Residual", 
+            xlabel="Number of iterations", 
+            ylabel="Residual", 
+            yscale=:log10, 
+            title="$(config["project_name"]) - Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds", 
+            titlefontsize=8,
+            size=(600, 400))
+    plot!(p, dual_residual, label="Dual Residual")
+    display(p)
+    
     push!(execution_times, elapsed_time)
     prosumer_cost, TNBearn = ProfitCal(Prosumer_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
     prosumer_cost_all[:,sce] = prosumer_cost
@@ -532,5 +545,7 @@ TNBearning_all = zeros(5,tot_sce)
         fill!(buy_priority_all, 0)
         fill!(sell_priority_all, 0)
     end
-
+    # oneSave(Pout_aux, reshape(λ[:,:,iteration_num-1],size(λ)[1:2]), Prosumer_decision, Grid_decision, execution_times, 
+    # optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
+    # Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
 end
