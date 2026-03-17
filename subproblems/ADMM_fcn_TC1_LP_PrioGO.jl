@@ -146,7 +146,8 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
     @variable(Grid_model, net_load_hour[i=1:hour, j=1:num_bus])
     @variable(Grid_model, P_br[i=1:hour, j=1:num_branch])
     # @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user], start = P_out[i, j])
-    @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user])
+    @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user] >= 0)
+    # @variable(Grid_model, P_out_aux[i=1:4*hour, j=1:num_user])
 
     # Consensus primal variable
     # @constraint(Grid_model, P_out_aux .== P_out + chg_p)
