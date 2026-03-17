@@ -1,9 +1,10 @@
 using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON  
 
-config_name = "config_testing_2"
+config_name = "config_testing_3"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
 config = JSON.parsefile(config_path)
 path = config["project_name"]
+testdataset = config["testdataset"]
 iter_save = config["iter_save"]
 
 file_dir = "D:/Jacky/Data Output/ADMM_P2P/New"

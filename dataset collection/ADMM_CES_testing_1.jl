@@ -334,6 +334,7 @@ TNBearning_all = zeros(5,tot_sce)
         Prosumer_decision = zeros(8 * hour, num_user)
         Grid_decision = zeros(2 * hour, num_user)
 
+        alpha_relax = config["relaxation parameter"] # relaxation parameter
         iteration_num = 2
         AI_inject_iter = config["injection_iter"]
         obj_g = []
@@ -371,7 +372,6 @@ TNBearning_all = zeros(5,tot_sce)
         ############## Loop for ADMM algorithm ################ 
         while (primal_residual[end] > converg_threshold_primal ||
             dual_residual[end] > converg_threshold_dual) && iteration_num < max_iteration
-            # dual_residual[end] > converg_threshold_dual) && iteration_num < 20
             global Pout, Pout_aux, iteration_num, rho_u, Prosumer_decision, Grid_decision, pr_ba, iter_ba, dr_ba
             
             if primal_residual[end] == 1
@@ -405,6 +405,8 @@ TNBearning_all = zeros(5,tot_sce)
                 Prosumer_decision[:, k] = P_decision_Prosumer
             end
             push!(subproblem_times, times_this_iter)
+
+            Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
 
             Pout_all[:, :, iteration_num] = Pout
             P_decision_all[:, :, iteration_num] = Prosumer_decision
@@ -455,10 +457,10 @@ TNBearning_all = zeros(5,tot_sce)
             append!(ctd, converg_threshold_dual)
 
             if iteration_num == AI_inject_iter + 3 #take in AI PRIMAL pred 
-                p1 = plot(primal_residual, xlabel="Number of iterations", ylabel="Primal Residual", yscale=:log10, title="ADMM", size=(500, 400))
-                p2 = plot(dual_residual, xlabel="Number of iterations", ylabel="Dual Residual", yscale=:log10, title="ADMM", size=(500, 400))
-                scatter!(p1, [iter_ba], [pr_ba], label="Reduction: $(round((pr_ba[1]-pr_ba[2]), digits=2))")
-                scatter!(p2, [iter_ba], [dr_ba], label="Reduction: $(round((dr_ba[1]-dr_ba[2]), digits=2))")
+                # p1 = plot(primal_residual, xlabel="Number of iterations", ylabel="Primal Residual", yscale=:log10, title="ADMM", size=(500, 400))
+                # p2 = plot(dual_residual, xlabel="Number of iterations", ylabel="Dual Residual", yscale=:log10, title="ADMM", size=(500, 400))
+                # scatter!(p1, [iter_ba], [pr_ba], label="Reduction: $(round((pr_ba[1]-pr_ba[2]), digits=2))")
+                # scatter!(p2, [iter_ba], [dr_ba], label="Reduction: $(round((dr_ba[1]-dr_ba[2]), digits=2))")
                 # display(p1)
                 # display(p2)
             end
@@ -477,7 +479,7 @@ TNBearning_all = zeros(5,tot_sce)
     println(" Finished sce: ", sce)
     println(" Primal Error is ", primal_residual[end])
     println(" Dual Error is ", dual_residual[end])
-    println(" Number of iterations is ", iteration_num)
+    println(" Number of iterations is ", iteration_num - 1)
     println(" Time taken: ", elapsed_time)
     println("#######################################")
 

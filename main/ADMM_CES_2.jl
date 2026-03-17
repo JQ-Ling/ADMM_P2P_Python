@@ -4,7 +4,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ
 # using StatsBase
 
 # Includes
-include("../subproblems/ADMM_fcn_TC1_LP_PrioGO.jl")
+include("../subproblems/Analysis/PrioGO_OldVersion_AMD.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -30,7 +30,8 @@ println("No. Time Step = ", hour)
 char_data_location_2 = "D:/Jacky/Julia-vscode/ADMM_P2P/Solar_interpolated_6000.csv"
 net_load_data = CSV.File(char_data_location_2, header=true) |> DataFrame
 
-SolarScaler = 1.5
+SolarScaler = 1
+# SolarScaler = 1.5
 interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
 
 # (6) PTDF
@@ -91,7 +92,7 @@ TNBearning_all = zeros(5, 1000)
         max_pros = nb_bus / 3
         pros_solar = Int(ceil(num_user / 2))
         net_load = copy(power_consumption')
-        net_load[pros_solar:end, :] .-= solar'
+        net_load[pros_solar:end, :] .-= 1.5 * solar'
 
         loc_prosumer = zeros(num_user, nb_bus)
         for i in 1:num_user
@@ -187,39 +188,13 @@ TNBearning_all = zeros(5, 1000)
         # BatteryCap = 2
         
         ####################Load Scenario GRU Pred ###########################
-        # EOpOb_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/EOpOb.csv"
-        # ori_optimal =  Matrix(CSV.File(EOpOb_file, header=false) |> DataFrame)[2]
-
-        # PBePBr_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/PBePBr.csv"
-        # PBePBr =  Matrix(CSV.File(PBePBr_file, header=false) |> DataFrame)
-
-        # primal_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/primal_last.csv"
-        # dual_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/dual_last.csv"
-        # primal_gt = Matrix(CSV.File(primal_file, header=false) |> DataFrame)
-        # dual_gt = Matrix(CSV.File(dual_file, header=false) |> DataFrame)
-        # Poutaux_optimal = primal_gt
-        # λ_optimal = dual_gt
-
-        # ### Analysis for suboptimal solution
-        # # primal_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/primal_all.csv"
-        # primal_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/Pout_all.csv"
-        # dual_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Original/LP/dual_all.csv"
-        # primal_ngt = Matrix(CSV.File(primal_file, header=true) |> DataFrame)
-        # # Poutaux_optimal = reshape(primal_ngt,192,32,Int(ori_optimal))[:,:,Int(ceil(ori_optimal*0.5))]
-        # Poutaux_optimal = reshape(primal_ngt,192,32,Int(ori_optimal))[:,:,100]
-        # dual_ngt = Matrix(CSV.File(dual_file, header=true) |> DataFrame)
-        # # λ_optimal = reshape(dual_ngt,192,32,Int(ori_optimal))[:,:,Int(ceil(ori_optimal*0.5))]
-        # λ_optimal = reshape(dual_ngt,192,32,Int(ori_optimal))[:,:,100]
-
-        # == Binary Analysis ==
-        # decision_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Data/.Problem Reduction/Category 1 Original/P_decision.csv"
-        # bin_CES = Matrix(CSV.File(decision_file, header=false) |> DataFrame)[337:end,:]
-
-        # decision_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Data/.Problem Reduction/69users/Category 1 Original/P_decision.csv"
-        # bin_CES = Matrix(CSV.File(decision_file, header=false) |> DataFrame)[337:end,:]
-
-        # decision_file = "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Data/.Problem Reduction/69users/MIPGapPros/Category 1 Original/P_decision.csv"
-        # bin_CES = Matrix(CSV.File(decision_file, header=false) |> DataFrame)[337:end,:]
+        ## GRU
+        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
+        primal_pred = npzread(primal_pred_location)
+        Poutaux_optimal = primal_pred[sce,:,:]
+        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
+        dual_pred = npzread(dual_pred_location)
+        λ_optimal = dual_pred[sce,:,:]
         ########################################################################
 
         ub_CES = BatteryCap * ones(hour, num_user) #upper bound of CES capacity for each prosumers
@@ -284,16 +259,15 @@ TNBearning_all = zeros(5, 1000)
         Pout_all = 0 * ones(num_dec * hour, num_user, max_iteration) #storing all Pout
         Pout_aux_all = 0 * ones(num_dec * hour, num_user, max_iteration) #storing all Pout_aux
         P_decision_all = 0 * ones(8 * hour, num_user, max_iteration) #storing all P_decision
-        Grid_CES_all = 0 * ones(6 * hour, 4, max_iteration) #storing all P_decision
         Pout_aux = 0 * ones(num_dec * hour, num_user)
         ui_all = zeros(20, hour, num_user)
-        cost = zeros(1, num_user)
         Prosumer_decision = zeros(8 * hour, num_user)
         Grid_decision = zeros(2 * hour, num_user)
         subproblem_times = Vector{Vector{Float64}}() 
 
+        alpha_relax = 1.5 # relaxation parameter
         iteration_num = 2
-        AI_inject_iter = 12
+        AI_inject_iter = 2000000000
         total_cost = []
         obj_g = []
         converg_threshold_primal = 1e-3
@@ -310,56 +284,76 @@ TNBearning_all = zeros(5, 1000)
         obj_all = []
         obj_p = []
 
-        # M1
-        # Pout_aux[4*hour+1:5*hour, :] = bin_CES
-        # M6
-        # Pout_aux[6*hour+1:7*hour, :] = bin_CES
-
         num_user_a = Int(sum(loc_prosumer))
+        num_user_in = []
+
+        # Find the prosumer involved in system
+        for i in 1:nb_bus
+            if length(findall(loc_prosumer[:,i] .== 1)) >0
+                append!(num_user_in,vec(findall(loc_prosumer[:,i] .== 1))) 
+                # println(vec(findall(loc_prosumer[:, i] .== 1)))
+            end
+        end 
+
         ############## Loop for ADMM algorithm ################
         while (primal_residual[end] > converg_threshold_primal ||
             dual_residual[end] > converg_threshold_dual) && iteration_num < max_iteration
-            # dual_residual[end] > converg_threshold_dual) && iteration_num < 3
             global Pout, Pout_aux, iteration_num, rho_u, Prosumer_decision, Grid_decision, ui_all
 
             if primal_residual[end] == 1
                 primal_residual = []
             end
             if iteration_num == AI_inject_iter
-                # λ[:,:,iteration_num-1] = λ_optimal
-                # # λ[:,:,iteration_num-1] = dual_5sce[loc_sce, :, :, 8]
-                # Pout_aux = Poutaux_optimal
-                # Pout_aux_all[:, :, iteration_num-1] = Pout_aux
+                λ[:,:,iteration_num-1] = λ_optimal
+                Pout_aux = Poutaux_optimal
+                Pout_aux_all[:, :, iteration_num-1] = Pout_aux
             end
 
             times_this_iter = zeros(num_user)
             # @time for k in 1:num_user  #calculate 15 prosumer problem in parallel
-            @time Threads.@threads for k in 1:num_user_a    #uncomment for parallel computing of Julia operation
+            # @time Threads.@threads for k in 1:num_user_a    #uncomment for parallel computing of Julia operation
+            @time Threads.@threads for k in num_user_in    #uncomment for parallel computing of Julia operation
                 start_time = time()
                 # obj_Prosumer, P_decision_Prosumer, Pout_Prosumer, ui_prosumer = Subproblem_Prosumer(Param_Prosumer, Pout_aux, k, λ, iteration_num - 1) #prosumer problem takes in new Pout_aux and lambda
                 obj_Prosumer, P_decision_Prosumer, Pout_Prosumer = Subproblem_Prosumer(Param_Prosumer, Pout_aux, k, λ, iteration_num - 1) #prosumer problem takes in new Pout_aux and lambda
                 times_this_iter[k] = time() - start_time
 
                 Pout[:, k] = Pout_Prosumer
-                cost[1, k] = obj_Prosumer
                 Prosumer_decision[:, k] = P_decision_Prosumer
                 # ui_all[4:end, :, k] = ui_prosumer
             end
 
             push!(subproblem_times, times_this_iter)
 
-            Pout_all[:, :, iteration_num] = Pout
-            P_decision_all[:, :, iteration_num] = Prosumer_decision
+            # # ---> ADD OVER-RELAXATION HERE <---
+            # # alpha_relax is defined earlier as 1.5
+            # Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux
+
+            # Pout_all[:, :, iteration_num] = Pout
+            # P_decision_all[:, :, iteration_num] = Prosumer_decision
 
             if iteration_num == AI_inject_iter #take in AI PRIMAL pred 
                 # λ[:,:,iteration_num-1] = λ_optimal
                 # Pout = Poutaux_optimal
                 # Pout_all[:, :, iteration_num] = Pout
+
+                Pout_all[:, :, iteration_num] = Pout
+                P_decision_all[:, :, iteration_num] = Prosumer_decision
+
+                # warm-started using prediction
+                obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Poutaux_optimal, λ, iteration_num - 1)
+            else
+                # ---> ADD OVER-RELAXATION HERE <---
+                # alpha_relax is defined earlier as 1.5
+                Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux
+
+                Pout_all[:, :, iteration_num] = Pout
+                P_decision_all[:, :, iteration_num] = Prosumer_decision
+
+                # over-relaxed primal variable is used for grid operator subproblem
+                obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1)
             end
 
-            # obj_Grid, Pout_Grid, P_decision_Grid, Grid_CES = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
-            # obj_Grid, Pout_Grid, P_decision_Grid, ui_grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
-            obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
             Pout_aux = Pout_Grid
             Grid_decision = P_decision_Grid
             Pout_aux_all[:, :, iteration_num] = Pout_aux
@@ -368,7 +362,6 @@ TNBearning_all = zeros(5, 1000)
 
             λ[:, :, iteration_num] = λ[:, :, iteration_num-1] + rho_u * (Pout_aux - Pout) # update λ
 
-            append!(total_cost, sum(cost))
             append!(obj_g, obj_Grid)
             append!(primal_error, sum(abs.(Pout - Pout_aux)))
             append!(dual_error, sum(abs.(rho_u * (λ[:, :, iteration_num] - λ[:, :, iteration_num-1]))))            
@@ -397,12 +390,15 @@ TNBearning_all = zeros(5, 1000)
         end
         push!(converg_num, iteration_num - 1)
 
-        println("#######################################")
-        println("Finished sce: ", sce)
-        println("Time now: ", now())
-        println("#######################################")
-
     end # for execution_times
+    println("#######################################")
+    println(" Finished sce: ", sce)
+    println(" Primal Error is ", primal_residual[end])
+    println(" Dual Error is ", dual_residual[end])
+    println(" Number of iterations is ", iteration_num - 1)
+    println(" Time taken: ", elapsed_time)
+    println("#######################################")
+
     # draw the results
     p = plot(primal_residual, 
                 label="Primal Residual", 

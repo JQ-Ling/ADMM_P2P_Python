@@ -1,20 +1,22 @@
 {
     "config name": "config_testing_1",
-    "injection_iter": 13,
     "sce_end": 20,
+    "injection_iter": 13,
     "primal_pred": "primal_pred.npy",
     "sce_start": 1,
     "iter_save": 50,
     "dual_pred": "dual_pred.npy",
+    "device used": "AMD",
     "number of decisions": 4,
     "injection": true,
     "testdataset": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame",
-    "ADMM_ver": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\ADMM_fcn_TC1_LP_PrioGO.jl",
+    "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD.jl",
+    "relaxation parameter": 1.5,
     "is_csv": false,
     "primal_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\primal_pred.npy",
     "last_processed_index": 20,
-    "project_name": "Eval_PL_raw_beforePros_AMD",
+    "project_name": "Eval_PL_raw_beforeGO_overrelaxed",
     "save_csv": true,
     "dual_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\dual_pred.npy",
-    "injection_pros": true
+    "injection_pros": false
 }

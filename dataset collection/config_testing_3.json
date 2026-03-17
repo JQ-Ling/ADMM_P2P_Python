@@ -1,5 +1,5 @@
 {
-    "config name": "config_testing_2",
+    "config name": "config_testing_3",
     "sce_end": 20,
     "injection_iter": 13,
     "primal_pred": "primal_pred_post.npy",
@@ -15,8 +15,8 @@
     "is_csv": false,
     "primal_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\primal_pred_post.npy",
     "last_processed_index": 20,
-    "project_name": "Eval_PL_processed_beforeGO_overrelaxed",
+    "project_name": "Eval_PL_processed_beforePros_overrelaxed",
     "save_csv": true,
     "dual_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\dual_pred.npy",
-    "injection_pros": false
+    "injection_pros": true
 }

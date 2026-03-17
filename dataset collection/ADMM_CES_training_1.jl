@@ -328,6 +328,7 @@ TNBearning_all = zeros(5,tot_sce)
         Prosumer_decision = zeros(8 * hour, num_user)
         Grid_decision = zeros(2 * hour, num_user)
 
+        alpha_relax = config["relaxation parameter"] # relaxation parameter
         iteration_num = 2
         obj_g = []
         converg_threshold_primal = 1e-3 # convergence threshold 
@@ -371,6 +372,9 @@ TNBearning_all = zeros(5,tot_sce)
                 Pout[:, k] = Pout_Prosumer
                 Prosumer_decision[:, k] = P_decision_Prosumer
             end
+
+            Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
+            
             Pout_all[:, :, iteration_num] = Pout
             P_decision_all[:, :, iteration_num] = Prosumer_decision
             
