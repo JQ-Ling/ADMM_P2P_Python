@@ -1,4 +1,4 @@
-using Glob, CSV, DataFrames, NPZ, Dates, JSON
+using Glob, CSV, DataFrames, NPZ, Dates, JSON, HTTP
 
 function obj(Pout_aux, P_decision, buy_bp, sell_bp, beta_tnb)
     P_c = Pout_aux[0*hour+1:1*hour, :]
@@ -358,4 +358,18 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
 
     CSV.write("$(dir_path)/Param_Prosumer.csv", Param_Prosumer)
     CSV.write("$(dir_path)/Param_Grid.csv", Param_Grid)
+end
+
+
+function send_notification(message)
+    # Use the same unique topic name you chose in the app
+    topic = "julia-testing" 
+    url = "https://ntfy.sh/$topic"
+    
+    try
+        HTTP.post(url, body=message)
+        println("Notification sent!")
+    catch e
+        println("Failed to send notification: $e")
+    end
 end
