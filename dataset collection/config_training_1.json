@@ -1,5 +1,6 @@
 {
     "config name": "config_training_1",
+    "over-relaxation": false,
     "sce_start": 1,
     "iter_save": 50,
     "device used": "AMD",
@@ -7,7 +8,7 @@
     "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD.jl",
     "relaxation parameter": 1.5,
     "last_processed_index": 20,
-    "project_name": "LP_PrioGO_test_20_OldSame_overrelaxed",
+    "project_name": "LP_PrioGO_test_20_OldSame_latest",
     "save_csv": false,
     "sce_end": 20
 }

@@ -1,4 +1,4 @@
-using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON  
+using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON, HTTP
 
 config_name = "config_testing_3"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
@@ -334,7 +334,18 @@ TNBearning_all = zeros(5,tot_sce)
         Prosumer_decision = zeros(8 * hour, num_user)
         Grid_decision = zeros(2 * hour, num_user)
 
-        alpha_relax = config["relaxation parameter"] # relaxation parameter
+        # relaxation parameter
+        alpha_relax = config["relaxation parameter"]
+        # Proximal term for ML anchor
+        mu = rho_u
+        decay = 0.95
+        Param_Prosumer[:mu] = mu
+        Param_Prosumer[:prediction] = Poutaux_optimal
+        Param_Prosumer[:pred_inj] = false
+        Param_Grid[:mu] = mu
+        Param_Grid[:prediction] = Poutaux_optimal
+        Param_Grid[:pred_inj] = false
+        
         iteration_num = 2
         AI_inject_iter = config["injection_iter"]
         obj_g = []
@@ -385,6 +396,9 @@ TNBearning_all = zeros(5,tot_sce)
                     λ[:,:,iteration_num-1] = λ_optimal
                     Pout_aux = Poutaux_optimal
                     Pout_aux_all[:, :, iteration_num-1] = Pout_aux
+
+                    Param_Prosumer[:pred_inj] = true
+                    Param_Grid[:pred_inj] = true
                 end
             end
             
@@ -406,7 +420,9 @@ TNBearning_all = zeros(5,tot_sce)
             end
             push!(subproblem_times, times_this_iter)
 
-            Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
+            if config["over-relaxation"]
+                Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
+            end
 
             Pout_all[:, :, iteration_num] = Pout
             P_decision_all[:, :, iteration_num] = Prosumer_decision
@@ -456,13 +472,11 @@ TNBearning_all = zeros(5,tot_sce)
             append!(ctp, converg_threshold_primal)
             append!(ctd, converg_threshold_dual)
 
-            if iteration_num == AI_inject_iter + 3 #take in AI PRIMAL pred 
-                # p1 = plot(primal_residual, xlabel="Number of iterations", ylabel="Primal Residual", yscale=:log10, title="ADMM", size=(500, 400))
-                # p2 = plot(dual_residual, xlabel="Number of iterations", ylabel="Dual Residual", yscale=:log10, title="ADMM", size=(500, 400))
-                # scatter!(p1, [iter_ba], [pr_ba], label="Reduction: $(round((pr_ba[1]-pr_ba[2]), digits=2))")
-                # scatter!(p2, [iter_ba], [dr_ba], label="Reduction: $(round((dr_ba[1]-dr_ba[2]), digits=2))")
-                # display(p1)
-                # display(p2)
+            if iteration_num >= AI_inject_iter && config["proximal decay"]
+                # devay proximal term
+                mu = mu * decay
+                Param_Prosumer[:mu] = mu
+                Param_Grid[:mu] = mu
             end
             iteration_num = iteration_num + 1
         end
@@ -551,3 +565,7 @@ TNBearning_all = zeros(5,tot_sce)
     # optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
     # Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
 end
+
+
+msg = "$(config["project_name"]) - Completed $(tot_sce) scenarios collection."
+send_notification(msg)

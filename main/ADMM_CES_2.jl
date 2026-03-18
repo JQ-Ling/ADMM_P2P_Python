@@ -1,10 +1,10 @@
 using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ
 # using PCHIPInterpolation
-# using Statistics
+# using Statisticspower
 # using StatsBase
 
 # Includes
-include("../subproblems/Analysis/PrioGO_OldVersion_AMD.jl")
+include("../subproblems/Analysis/PrioGO_OldVersion_AMD_proximal.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -189,10 +189,10 @@ TNBearning_all = zeros(5, 1000)
         
         ####################Load Scenario GRU Pred ###########################
         ## GRU
-        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
+        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
         primal_pred = npzread(primal_pred_location)
         Poutaux_optimal = primal_pred[sce,:,:]
-        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
+        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
         dual_pred = npzread(dual_pred_location)
         λ_optimal = dual_pred[sce,:,:]
         ########################################################################
@@ -265,9 +265,20 @@ TNBearning_all = zeros(5, 1000)
         Grid_decision = zeros(2 * hour, num_user)
         subproblem_times = Vector{Vector{Float64}}() 
 
-        alpha_relax = 1.5 # relaxation parameter
+        # relaxation parameter
+        alpha_relax = 1.5
+        # Proximal term for ML anchor
+        mu = rho_u
+        decay = 0.95
+        Param_Prosumer[:mu] = mu
+        Param_Prosumer[:prediction] = Poutaux_optimal
+        Param_Prosumer[:pred_inj] = false
+        Param_Grid[:mu] = mu
+        Param_Grid[:prediction] = Poutaux_optimal
+        Param_Grid[:pred_inj] = false
+
         iteration_num = 2
-        AI_inject_iter = 2000000000
+        AI_inject_iter = 2
         total_cost = []
         obj_g = []
         converg_threshold_primal = 1e-3
@@ -307,6 +318,9 @@ TNBearning_all = zeros(5, 1000)
                 λ[:,:,iteration_num-1] = λ_optimal
                 Pout_aux = Poutaux_optimal
                 Pout_aux_all[:, :, iteration_num-1] = Pout_aux
+
+                Param_Prosumer[:pred_inj] = true
+                Param_Grid[:pred_inj] = true
             end
 
             times_this_iter = zeros(num_user)
@@ -325,35 +339,22 @@ TNBearning_all = zeros(5, 1000)
 
             push!(subproblem_times, times_this_iter)
 
-            # # ---> ADD OVER-RELAXATION HERE <---
-            # # alpha_relax is defined earlier as 1.5
+            # ---> ADD OVER-RELAXATION HERE <---
+            # alpha_relax is defined earlier as 1.5
             # Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux
 
-            # Pout_all[:, :, iteration_num] = Pout
-            # P_decision_all[:, :, iteration_num] = Prosumer_decision
+            Pout_all[:, :, iteration_num] = Pout
+            P_decision_all[:, :, iteration_num] = Prosumer_decision
 
             if iteration_num == AI_inject_iter #take in AI PRIMAL pred 
                 # λ[:,:,iteration_num-1] = λ_optimal
                 # Pout = Poutaux_optimal
                 # Pout_all[:, :, iteration_num] = Pout
-
-                Pout_all[:, :, iteration_num] = Pout
-                P_decision_all[:, :, iteration_num] = Prosumer_decision
-
-                # warm-started using prediction
-                obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Poutaux_optimal, λ, iteration_num - 1)
-            else
-                # ---> ADD OVER-RELAXATION HERE <---
-                # alpha_relax is defined earlier as 1.5
-                Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux
-
-                Pout_all[:, :, iteration_num] = Pout
-                P_decision_all[:, :, iteration_num] = Prosumer_decision
-
-                # over-relaxed primal variable is used for grid operator subproblem
-                obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1)
             end
 
+            # obj_Grid, Pout_Grid, P_decision_Grid, Grid_CES = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
+            # obj_Grid, Pout_Grid, P_decision_Grid, ui_grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
+            obj_Grid, Pout_Grid, P_decision_Grid = Subproblem_Grid_Operator(Param_Grid, Pout, λ, iteration_num - 1) #gather Pout and send to grid operator master problem
             Pout_aux = Pout_Grid
             Grid_decision = P_decision_Grid
             Pout_aux_all[:, :, iteration_num] = Pout_aux
@@ -380,8 +381,11 @@ TNBearning_all = zeros(5, 1000)
             append!(ctd, converg_threshold_dual)
 
             iteration_num = iteration_num + 1
-            if iteration_num == AI_inject_iter + 3 #take in AI PRIMAL pred 
-                # display(plot(primal_residual, xlabel="Number of iterations", ylabel="Primal Residual", yscale=:log10, title="ADMM", size=(500, 400)))
+            if iteration_num > AI_inject_iter
+                # devay proximal term
+                # mu = mu * decay
+                # Param_Prosumer[:mu] = mu
+                # Param_Grid[:mu] = mu
             end
 
             if iteration_num > max_iteration

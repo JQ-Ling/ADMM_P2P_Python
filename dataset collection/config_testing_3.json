@@ -1,7 +1,9 @@
 {
     "config name": "config_testing_3",
+    "proximal decay": true,
     "sce_end": 20,
-    "injection_iter": 13,
+    "injection_pros": true,
+    "over-relaxation": false,
     "primal_pred": "primal_pred_post.npy",
     "sce_start": 1,
     "iter_save": 50,
@@ -9,14 +11,14 @@
     "device used": "AMD",
     "number of decisions": 4,
     "injection": true,
-    "testdataset": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame",
-    "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD.jl",
+    "testdataset": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\Plain PrioGO version chaos\\LP_PrioGO_test_20_OldSame",
+    "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD_proximal.jl",
     "relaxation parameter": 1.5,
     "is_csv": false,
-    "primal_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\primal_pred_post.npy",
+    "primal_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\Plain PrioGO version chaos\\LP_PrioGO_test_20_OldSame\\predictions\\primal_pred_post.npy",
     "last_processed_index": 20,
-    "project_name": "Eval_PL_processed_beforePros_overrelaxed",
+    "project_name": "Eval_PL_processed_beforePros_proximal_decay",
     "save_csv": true,
-    "dual_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\LP_PrioGO_test_20_OldSame\\predictions\\dual_pred.npy",
-    "injection_pros": true
+    "dual_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\Plain PrioGO version chaos\\LP_PrioGO_test_20_OldSame\\predictions\\dual_pred.npy",
+    "injection_iter": 13
 }

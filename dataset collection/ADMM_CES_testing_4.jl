@@ -1,6 +1,6 @@
 using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON, HTTP
 
-config_name = "config_testing_2"
+config_name = "config_testing_4"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
 config = JSON.parsefile(config_path)
 path = config["project_name"]
@@ -388,10 +388,10 @@ TNBearning_all = zeros(5,tot_sce)
             if primal_residual[end] == 1
                 primal_residual =[]
             end
-            if iteration_num == AI_inject_iter  
-                # pr_ba = [primal_residual[end]]
-                # dr_ba = [dual_residual[end]]
-                # iter_ba = [length(primal_residual)]
+            if iteration_num == AI_inject_iter  #take in AI Pout_aux pred on 11th loop
+                pr_ba = [primal_residual[end]]
+                dr_ba = [dual_residual[end]]
+                iter_ba = [length(primal_residual)]
                 if config["injection_pros"] && config["injection"]
                     λ[:,:,iteration_num-1] = λ_optimal
                     Pout_aux = Poutaux_optimal
@@ -457,9 +457,9 @@ TNBearning_all = zeros(5,tot_sce)
             train_dual_residual[loc_sce, iteration_num-1] = dual_residual[end]
             train_obj[loc_sce, iteration_num-1] = obj_all[end]
             if iteration_num == AI_inject_iter # save after injection
-                # append!(pr_ba, primal_residual[end])
-                # append!(dr_ba, dual_residual[end])
-                # append!(iter_ba, length(primal_residual))
+                append!(pr_ba, primal_residual[end])
+                append!(dr_ba, dual_residual[end])
+                append!(iter_ba, length(primal_residual))
             end
 
             println("----------------------------------------------------------------")
@@ -564,6 +564,7 @@ TNBearning_all = zeros(5,tot_sce)
     # oneSave(Pout_aux, reshape(λ[:,:,iteration_num-1],size(λ)[1:2]), Prosumer_decision, Grid_decision, execution_times, 
     # optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
     # Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
+    
 end
 
 

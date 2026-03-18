@@ -3,7 +3,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON
 config_name = "config_training_1"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
 config = JSON.parsefile(config_path)
-path = config["project_name"]
+path = config["project_name"]sett
 iter_save = config["iter_save"]
 
 file_dir = "D:/Jacky/Data Output/ADMM_P2P/New"
@@ -372,8 +372,10 @@ TNBearning_all = zeros(5,tot_sce)
                 Pout[:, k] = Pout_Prosumer
                 Prosumer_decision[:, k] = P_decision_Prosumer
             end
-
-            Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
+            
+            if config["over-relaxation"]
+                Pout = alpha_relax .* Pout .+ (1 - alpha_relax) .* Pout_aux # over-relaxation step
+            end
             
             Pout_all[:, :, iteration_num] = Pout
             P_decision_all[:, :, iteration_num] = Prosumer_decision
