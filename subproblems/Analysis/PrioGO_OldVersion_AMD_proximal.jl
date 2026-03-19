@@ -21,11 +21,13 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     B_load = zeros(size(P_load))
     B_load[findall(P_load .> 0)] .= 1 # 1 = TNL, 0 = TSE
 
-    Prosumer_model = Model(Gurobi.Optimizer)
+    Prosumer_model = redirect_stdout(devnull) do
+        Model(Gurobi.Optimizer)
+    end
 
     ######## Allocate the cores/threads, 1 core = 2 threads for multithreading ##########
+    JuMP.set_optimizer_attribute(Prosumer_model, "OutputFlag", 0)
     JuMP.set_optimizer_attribute(Prosumer_model, "Threads", 2)
-    # JuMP.set_optimizer_attribute(Prosumer_model, "OutputFlag", 1)
 
     set_silent(Prosumer_model)
     @variable(Prosumer_model, nload[i=1:hour])
@@ -139,9 +141,12 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
     B_load = zeros(size(P_load))
     B_load[findall(P_load .> 0)] .= 1 # 1 = TNL, 0 = TSE
 
-    Grid_model = Model(Gurobi.Optimizer)
+    Grid_model = redirect_stdout(devnull) do
+        Model(Gurobi.Optimizer)
+    end
 
     ############ allocate the cores/threads, 1 core = 2 threads for multithreading ############
+    JuMP.set_optimizer_attribute(Grid_model, "OutputFlag", 0)
     JuMP.set_optimizer_attribute(Grid_model, "Threads", 16)
 
     set_silent(Grid_model)
