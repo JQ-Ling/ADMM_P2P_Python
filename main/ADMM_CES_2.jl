@@ -474,3 +474,6 @@ TNBearning_all = zeros(5, 1000)
     optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
     Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
 end
+
+msg = "ADMM_CES_1 completed."
+send_notification(msg)

@@ -4,7 +4,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ
 # using StatsBase
 
 # Includes
-include("../subproblems/Analysis/PrioGO_OldVersion_AMD_proximal.jl")
+include("../subproblems/Analysis/PrioGO_OldVersion_AMD_soft.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -336,7 +336,7 @@ TNBearning_all = zeros(5, 1000)
                 Prosumer_decision[:, k] = P_decision_Prosumer
                 # ui_all[4:end, :, k] = ui_prosumer
             end
-
+            
             push!(subproblem_times, times_this_iter)
 
             # ---> ADD OVER-RELAXATION HERE <---
@@ -474,3 +474,6 @@ TNBearning_all = zeros(5, 1000)
     optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
     Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
 end
+
+msg = "ADMM_CES_1 completed."
+send_notification(msg)
