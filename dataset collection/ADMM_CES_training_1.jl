@@ -3,7 +3,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON
 config_name = "config_training_1"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
 config = JSON.parsefile(config_path)
-path = config["project_name"]sett
+path = config["project_name"]
 iter_save = config["iter_save"]
 
 file_dir = "D:/Jacky/Data Output/ADMM_P2P/New"
@@ -328,11 +328,22 @@ TNBearning_all = zeros(5,tot_sce)
         Prosumer_decision = zeros(8 * hour, num_user)
         Grid_decision = zeros(2 * hour, num_user)
 
-        alpha_relax = config["relaxation parameter"] # relaxation parameter
+        # relaxation parameter
+        alpha_relax = config["relaxation parameter"]
+        # Proximal term for ML anchor
+        mu = rho_u
+        decay = 0.95
+        Param_Prosumer[:mu] = mu
+        # Param_Prosumer[:prediction] = Poutaux_optimal
+        Param_Prosumer[:pred_inj] = false
+        Param_Grid[:mu] = mu
+        # Param_Grid[:prediction] = Poutaux_optimal
+        Param_Grid[:pred_inj] = false
+
         iteration_num = 2
         obj_g = []
-        converg_threshold_primal = 1e-3 # convergence threshold 
-        converg_threshold_dual = 1e-3 # convergence threshold 
+        converg_threshold_primal = config["threshold"]
+        converg_threshold_dual = config["threshold"]
         rhov = []
         ctp = []
         ctd = []
@@ -498,3 +509,6 @@ TNBearning_all = zeros(5,tot_sce)
     # ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
     # oneSave(Pout_aux, reshape(λ[:,:,iteration_num-1],192,32), Prosumer_decision, Grid_decision, execution_times, optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1])
 end
+
+msg = "$(config["project_name"]) - Completed $(tot_sce) scenarios collection."
+send_notification(msg)
