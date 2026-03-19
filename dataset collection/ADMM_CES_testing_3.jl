@@ -349,8 +349,8 @@ TNBearning_all = zeros(5,tot_sce)
         iteration_num = 2
         AI_inject_iter = config["injection_iter"]
         obj_g = []
-        converg_threshold_primal = 1e-3
-        converg_threshold_dual = 1e-3
+        converg_threshold_primal = config["threshold"]
+        converg_threshold_dual = config["threshold"]
         rhov = []
         ctp = []
         ctd = []
@@ -389,9 +389,9 @@ TNBearning_all = zeros(5,tot_sce)
                 primal_residual =[]
             end
             if iteration_num == AI_inject_iter  #take in AI Pout_aux pred on 11th loop
-                pr_ba = [primal_residual[end]]
-                dr_ba = [dual_residual[end]]
-                iter_ba = [length(primal_residual)]
+                # pr_ba = [primal_residual[end]]
+                # dr_ba = [dual_residual[end]]
+                # iter_ba = [length(primal_residual)]
                 if config["injection_pros"] && config["injection"]
                     λ[:,:,iteration_num-1] = λ_optimal
                     Pout_aux = Poutaux_optimal
@@ -457,9 +457,9 @@ TNBearning_all = zeros(5,tot_sce)
             train_dual_residual[loc_sce, iteration_num-1] = dual_residual[end]
             train_obj[loc_sce, iteration_num-1] = obj_all[end]
             if iteration_num == AI_inject_iter # save after injection
-                append!(pr_ba, primal_residual[end])
-                append!(dr_ba, dual_residual[end])
-                append!(iter_ba, length(primal_residual))
+                # append!(pr_ba, primal_residual[end])
+                # append!(dr_ba, dual_residual[end])
+                # append!(iter_ba, length(primal_residual))
             end
 
             println("----------------------------------------------------------------")
