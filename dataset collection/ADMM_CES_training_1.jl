@@ -70,6 +70,8 @@ config["last_processed_index"] == 0 ? sce_start = config["sce_start"] : sce_star
 sce_end = config["sce_end"]
 tot_sce = sce_end - config["sce_start"] + 1
 
+println("Collection started: ", sce_start, " to ", sce_end)
+
 num_dec = config["number of decisions"]
 tc2 = 33
 tc3 = 2
@@ -92,8 +94,8 @@ train_obj = fill(NaN, 5, 5000)
 buy_priority_all = zeros(num_user, nb_hour, 5)
 sell_priority_all = zeros(num_user, nb_hour, 5)
 # prosumer_cost_all = zeros(294,3000)
-prosumer_cost_all = zeros(224,tot_sce)
-TNBearning_all = zeros(5,tot_sce)
+prosumer_cost_all = zeros(224,6000)
+TNBearning_all = zeros(5,6000)
 
 @time for sce in sce_start:sce_end
     elapsed_time = @elapsed begin
@@ -159,8 +161,8 @@ TNBearning_all = zeros(5,tot_sce)
                 #         loc_prosumer[i,i+1] = 1
                 #     end
                 # end
-                if sum(i .== rand_pros_bus) != 0
-                    loc_prosumer[i, random_bus.+1] .= 1
+                if sum(i .== rand_pros_bus) != 0 # check if the prosumer is randomly selected
+                    loc_prosumer[i, random_bus.+1] .= 1 # put them in the randomly selected bus 
                 else
                     loc_prosumer[i, i+1] = 1
                 end
@@ -500,6 +502,8 @@ TNBearning_all = zeros(5,tot_sce)
         fill!(train_obj, 0)
         fill!(buy_priority_all, 0)
         fill!(sell_priority_all, 0)
+
+        GC.gc()
     end
     
     #################################################################################################################

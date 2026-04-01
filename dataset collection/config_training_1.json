@@ -1,15 +1,16 @@
 {
     "config name": "config_training_1",
+    "proximal decay": false,
     "over-relaxation": false,
-    "sce_start": 1,
+    "sce_start": 1001,
     "iter_save": 50,
     "device used": "AMD",
     "number of decisions": 4,
     "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD_proximal.jl",
     "relaxation parameter": 1.5,
-    "last_processed_index": 100,
-    "threshold": 0.0001,
-    "project_name": "LP_PrioGO_test_100_OldSame_latest",
-    "save_csv": false,
-    "sce_end": 100
+    "last_processed_index": 2000,
+    "threshold": 0.001,
+    "project_name": "LP_PrioGO_train_fixed_1000sce",
+    "save_csv": true,
+    "sce_end": 2000
 }

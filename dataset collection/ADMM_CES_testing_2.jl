@@ -77,6 +77,8 @@ config["last_processed_index"] == 0 ? sce_start = config["sce_start"] : sce_star
 sce_end = config["sce_end"]
 tot_sce = sce_end - config["sce_start"] + 1
 
+println("Collection started: ", sce_start, " to ", sce_end)
+
 num_dec = config["number of decisions"]
 execution_times = []
 optimal_num = []
@@ -222,6 +224,10 @@ TNBearning_all = zeros(5,tot_sce)
             λ_optimal = dual_pred[sce,:,:]
         end
 
+        if config["transformer"]
+            Poutaux_optimal = Poutaux_optimal'
+            λ_optimal = λ_optimal'
+        end
         # Poutaux_optimal = [Poutaux_optimal[97:end,:]; Poutaux_optimal[1:96,:]]
 
         # ## Transformer
@@ -560,6 +566,8 @@ TNBearning_all = zeros(5,tot_sce)
         fill!(train_obj, 0)
         fill!(buy_priority_all, 0)
         fill!(sell_priority_all, 0)
+
+        GC.gc()
     end
     # oneSave(Pout_aux, reshape(λ[:,:,iteration_num-1],size(λ)[1:2]), Prosumer_decision, Grid_decision, execution_times, 
     # optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, 
