@@ -1,4 +1,4 @@
-using Glob, CSV, DataFrames, NPZ, Dates, JSON, HTTP
+using Glob, CSV, DataFrames, NPZ, Dates, JSON, HTTP, StatsBase
 
 function obj(Pout_aux, P_decision, buy_bp, sell_bp, beta_tnb)
     P_c = Pout_aux[0*hour+1:1*hour, :]
@@ -18,7 +18,8 @@ end
 
 function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, path, config, Param_Prosumer, Param_Grid)
+    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, path, config, Param_Prosumer, Param_Grid,
+    ledger_for_export)
 
     if isdir(path)
         println("Folder exists: ", path)
@@ -63,8 +64,8 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     CSV.write("$(path)/DecisionVariable/sell_priority_$(first)to$(last)sce.csv", sp)
 
     # For those 2D matrix, will update every 5 scenarios (storing info for all scenario)
-    d_on = DataFrame(optimal_num=optimal_num)
-    d_ex = DataFrame(execution_times=execution_times)
+    d_on = DataFrame(optimal_num=optimal_num[end-4:end])
+    d_ex = DataFrame(execution_times=execution_times[end-4:end])
     lps = DataFrame(loc_pros_solar_all, :auto)
     pe = DataFrame(train_primal_error, :auto)
     pr = DataFrame(train_primal_residual, :auto)
@@ -83,7 +84,7 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
 
     if infeasible == 1
         d_infeasible = DataFrame(infeasible_sce=infeasible_sce)
-        CSV.write("D:/Jacky/Data Output/ADMM_P2P/New/$(path)/infeasible_sce/infeasible_sce_$(sce_start)to$(last)sce.csv", d_infeasible)
+        CSV.write("$(path)/infeasible_sce/infeasible_sce_$(sce_start)to$(last)sce.csv", d_infeasible)
     end
 
     totalP2P = zeros(32,1000)
@@ -133,6 +134,9 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     end
     open("$(dir_path)/config.json", "w") do f
         JSON.print(f, config, 4)
+    end
+    open("$(dir_path)/config_generalization.json", "w") do f
+        JSON.print(f, ledger_for_export, 4) 
     end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
@@ -190,7 +194,8 @@ end
 
 function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
-    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, dir_path, config, Param_Prosumer, Param_Grid)
+    train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, dir_path, config, Param_Prosumer, Param_Grid,
+    ledger_for_export)
 
     if isdir(dir_path)
         println("Folder exists: ", dir_path)
@@ -353,6 +358,9 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     open("$(dir_path)/config.json", "w") do f
         JSON.print(f, config, 4)
     end
+    open("$(dir_path)/config_generalization.json", "w") do f
+        JSON.print(f, ledger_for_export, 4)
+    end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
 
@@ -372,4 +380,51 @@ function send_notification(message)
     catch e
         println("Failed to send notification: $e")
     end
+end
+
+function create_directory(dir_path)
+    if isdir(dir_path)
+        println("Folder exists: ", dir_path)
+    else
+        println("Folder does not exist, creating it.")
+        mkpath(dir_path) 
+        mkpath(joinpath(dir_path, "DecisionVariable"))
+        mkpath(joinpath(dir_path, "optimal_iter"))
+        mkpath(joinpath(dir_path, "location"))
+        mkpath(joinpath(dir_path, "infeasible_sce"))
+        mkpath(joinpath(dir_path, "Profit"))
+    end
+end
+
+function generate_active_user(history_combinations, ledger_for_export, nb_prosumer, _num_user_active, sce, loc_prosumer)
+    
+    # 4. Generate Unique Configuration
+    _rand_user_active = Int[]
+
+    while true
+        # Randomly select active users from the total prosumers
+        _rand_user_active = sample(1:nb_prosumer, _num_user_active, replace=false)
+
+        # Create the exact fingerprint
+        fingerprint = Tuple(sort(_rand_user_active))
+        
+        # Check for duplication
+        if !(fingerprint in history_combinations)
+            push!(history_combinations, fingerprint) # Reserve it
+            break # Exit loop, we found a unique one!
+        end
+    end
+    
+    # 5. Map the unique users to the grid
+    loc_prosumer[CartesianIndex.(_rand_user_active, _rand_user_active .+ 1)] .= 1
+
+    # 6. Save to JSON ledger
+    push!(ledger_for_export, Dict(
+        "scenario" => sce,
+        "num_users" => length(_rand_user_active),
+        "active_users" => sort(_rand_user_active),
+    ))
+    println(history_combinations)
+
+    return loc_prosumer, _rand_user_active, history_combinations, ledger_for_export
 end
