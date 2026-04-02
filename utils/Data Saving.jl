@@ -398,24 +398,36 @@ end
 
 function generate_active_user(history_combinations, ledger_for_export, nb_prosumer, _num_user_active, sce, loc_prosumer)
     
-    # 4. Generate Unique Configuration
+    # 1. Calculate the absolute mathematical maximum for this specific user pool
+    max_possible_combinations = binomial(nb_prosumer, _num_user_active)
+    
+    # 2. Count how many combinations OF THIS SIZE we have already generated
+    # (This assumes history_combinations is a Set or Array of Tuples)
+    current_count_for_size = count(comb -> length(comb) == _num_user_active, history_combinations)
+
     _rand_user_active = Int[]
 
-    while true
-        # Randomly select active users from the total prosumers
+    # 3. Apply your new logic: Check if we are allowed to repeat
+    if current_count_for_size >= max_possible_combinations
+        # We hit the limit! Just generate a random one and move on immediately.
         _rand_user_active = sample(1:nb_prosumer, _num_user_active, replace=false)
-
-        # Create the exact fingerprint
-        fingerprint = Tuple(sort(_rand_user_active))
         
-        # Check for duplication
-        if !(fingerprint in history_combinations)
-            push!(history_combinations, fingerprint) # Reserve it
-            break # Exit loop, we found a unique one!
+        # (Optional) You can print a little note so you know it's repeating
+        # println("Size $_num_user_active maxed out ($max_possible_combinations). Allowing repeat.")
+    else
+        # We have NOT hit the limit. Force the system to find a unique one.
+        while true
+            _rand_user_active = sample(1:nb_prosumer, _num_user_active, replace=false)
+            fingerprint = Tuple(sort(_rand_user_active))
+            
+            if !(fingerprint in history_combinations)
+                push!(history_combinations, fingerprint) 
+                break 
+            end
         end
     end
     
-    # 5. Map the unique users to the grid
+    # 5. Map the users to the grid
     loc_prosumer[CartesianIndex.(_rand_user_active, _rand_user_active .+ 1)] .= 1
 
     # 6. Save to JSON ledger
@@ -424,7 +436,6 @@ function generate_active_user(history_combinations, ledger_for_export, nb_prosum
         "num_users" => length(_rand_user_active),
         "active_users" => sort(_rand_user_active),
     ))
-    println(history_combinations)
 
     return loc_prosumer, _rand_user_active, history_combinations, ledger_for_export
 end

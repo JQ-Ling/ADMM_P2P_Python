@@ -98,7 +98,7 @@ TNBearning_all = zeros(5,6000)
 #######
 # Interpolated generalization purpose
 gen_config_path = joinpath(dir_path, "config_generalization.json")
-history_combinations = Tuple[]
+history_combinations = Set{Tuple}()
 ledger_for_export = [] 
 
 # 3. Load existing data
