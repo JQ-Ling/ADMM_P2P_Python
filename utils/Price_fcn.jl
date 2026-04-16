@@ -60,7 +60,7 @@ end
 
 function ResidentialTariff(Power)
     # TarrifPrice = [0.218 0.334 0.516 0.546 0.571]; 
-    TarrifPrice = 0.57*ones(1,5); 
+    TarrifPrice = 0.5443*ones(1,5); 
     TarrifRange = [200 100 300 300]; TotalCost = 0; i = 1
     # for j in 1:4
     #     J += 1
@@ -104,8 +104,7 @@ function IndustrialTariff(Power)
     return TotalCost
 end
 
-function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
-# function ResultPrint(Prosumer_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
+function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade, Param_Grid)
     println("#######################################")
     println("Printing Result")
     println("#######################################")
@@ -123,17 +122,14 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     Result_P2P_sell = Pout_aux[3*hour+1:4*hour, :]
     Result_B_charge = Prosumer_decision[7*hour+1:8*hour, :]
 
-    # Result_Grid_buy = Prosumer_decision[0*hour+1:1*hour, 1:5]
-    # Result_Grid_sell = Prosumer_decision[1*hour+1:2*hour, 1:5]
-    # Result_bat_lv = Prosumer_decision[2*hour+1:3*hour, 1:5]
-    # Result_Charge = Prosumer_decision[3*hour+1:4*hour, :]
-    # Result_Discharge = Prosumer_decision[4*hour+1:5*hour, :]
-    # Result_P2P_buy = Prosumer_decision[5*hour+1:6*hour, 1:5]
-    # Result_P2P_sell = Prosumer_decision[6*hour+1:7*hour, 1:5]
-    # Result_B_charge = Prosumer_decision[7*hour+1:8*hour, :]
+    bus_voltage     = Grid_decision[2]
+    Result_P_br     = Grid_decision[3]
+    CES_SOC         = Grid_decision[4]
+    CES_Charge      = Grid_decision[5]
+    CES_Discharge   = Grid_decision[6]
 
-    # Result_net_load = Grid_decision[0*hour+1:1*hour, :]
-    # Result_P_br = Grid_decision[1*hour+1:2*hour, :]
+    BranchLimit = Param_Grid[:branch_limit]
+
     final_buy_price = sum(buy_bp, dims=1) / 32
     final_sell_price = sum(sell_bp, dims=1) / 32
 
@@ -377,6 +373,60 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     #     end
     #     println("-----------------------------------------------------------------------------")
     # end
+
+    num_CES = size(CES_SOC, 2)
+    CES_cap = CES_SOC[1,:]
+    p = plot(CES_SOC[:,1], 
+                label="CES 1, Capacity: $(round(CES_cap[1], digits=2)) kWh", 
+                xlabel="State of Charge (kWh)", 
+                ylabel="Time", 
+                # yscale=:log10, 
+                title="SOC of CES on Grid", 
+                # titlefontsize=8,
+                size=(600, 400))
+    for i in 2:num_CES
+        plot!(p, CES_SOC[:,i], label="CES $i, Capacity: $(round(CES_cap[i], digits=2)) kWh")
+    end
+    display(p)
+
+    CES_net_charge = CES_Charge - CES_Discharge
+    p2 = plot(CES_net_charge[:,1], 
+                label="CES 1", 
+                xlabel="Net Charge (kWh)", 
+                ylabel="Time", 
+                # yscale=:log10, 
+                title="Net Charge of CES on Grid", 
+                # titlefontsize=8,
+                size=(600, 400))
+    for i in 2:num_CES
+        plot!(p2, CES_net_charge[:,i], label="CES $i")
+    end
+    display(p2)
+
+    num_bus = size(bus_voltage, 2)
+    p3 = plot(bus_voltage[:,1], 
+                xlabel="Voltage (p.u.)", 
+                ylabel="Time", 
+                # yscale=:log10, 
+                title="Voltage Profile of Grid, Limit: [0.95, 1.05] p.u.", 
+                # titlefontsize=8,
+                size=(600, 400))
+    for i in 2:num_bus
+        plot!(p3, bus_voltage[:,i])
+    end
+    display(p3)
+
+    max_power = maximum(Result_P_br, dims=1)
+    p4 = plot(max_power', 
+                label="Branch Power Flow", 
+                xlabel="Power (kW)", 
+                ylabel="Branch", 
+                yscale=:log10, 
+                title="Power Flow on Branches", 
+                # titlefontsize=8,
+                size=(600, 400))
+    plot!(p4, BranchLimit, label="Branch Limit", linestyle=:dash, linecolor=:red)
+    display(p4)
 end
 
 function ProfitCal(Prosumer_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
