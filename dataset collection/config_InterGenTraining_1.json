@@ -8,10 +8,10 @@
     "number of decisions": 4,
     "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\Analysis\\PrioGO_OldVersion_AMD_proximal.jl",
     "relaxation parameter": 1.5,
-    "last_processed_index": 1345,
+    "last_processed_index": 6000,
     "threshold": 0.001,
-    "project_name": "LP_PrioGO_train_InterGen_1000sce",
+    "project_name": "LP_PrioGO_train_InterGen_5000sce",
     "save_csv": true,
-    "last_train_gen_index": 18,
-    "sce_end": 2000
+    "last_train_gen_index": 16,
+    "sce_end": 6000
 }

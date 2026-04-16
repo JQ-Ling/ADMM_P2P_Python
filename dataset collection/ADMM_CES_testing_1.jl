@@ -141,14 +141,38 @@ TNBearning_all = zeros(5,tot_sce)
         
         if config["is_csv"]
             ## CSV dataset ##################################################
-            loc_p_file = "$(testdataset)/location/location_prosumer_$(fs)to$(ls)sce.csv"
-            bp_file = "$(testdataset)/DecisionVariable/buy_priority_$(fs)to$(ls)sce.csv"
-            sp_file = "$(testdataset)/DecisionVariable/sell_priority_$(fs)to$(ls)sce.csv"
+            file_configs = Dict(
+                :loc_p => ("location", "location_prosumer_"),
+                :bp    => ("DecisionVariable", "buy_priority_"),
+                :sp    => ("DecisionVariable", "sell_priority_")
+            )
+            loaded_data = Dict{Symbol, Matrix}()
 
-            loc_p = Matrix(CSV.File(loc_p_file, header=true) |> DataFrame)
-            bp = Matrix(CSV.File(bp_file, header=true) |> DataFrame)
-            sp = Matrix(CSV.File(sp_file, header=true) |> DataFrame)
+            for (var_name, (folder, prefix)) in file_configs
+                versions = [
+                    "$(testdataset)/$folder/$(prefix)$(fs)to$(ls)sce.csv",     # Standard: 1to5
+                    "$(testdataset)/$folder/$(prefix)0$(fs)to0$(ls)sce.csv",   # Padded: 01to05
+                    "$(testdataset)/$folder/$(prefix)0$(fs)to$(ls)sce.csv"     # Mixed: 01to5
+                ]
+                found = false
+                for path in versions
+                    if isfile(path)
+                        loaded_data[var_name] = Matrix(CSV.File(path, header=true) |> DataFrame)
+                        found = true
+                        break
+                    end
+                end
+                if !found
+                    error("Could not find any version of $prefix for range $(fs)to$(ls)")
+                end
+            end
 
+            # 3. Assign to your variables (now they exist in the outer scope)
+            loc_p = loaded_data[:loc_p]
+            bp    = loaded_data[:bp]
+            sp    = loaded_data[:sp]
+
+            # 4. Now your reshapes will work perfectly
             loc_prosumer_5sce = reshape(loc_p, (num_user, nb_bus, 5))
             bp_5sce = reshape(bp, (num_user, nb_hour, 5))
             sp_5sce = reshape(sp, (num_user, nb_hour, 5))
@@ -508,7 +532,7 @@ TNBearning_all = zeros(5,tot_sce)
             xlabel="Number of iterations", 
             ylabel="Residual", 
             yscale=:log10, 
-            title="$(config["project_name"]) - Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds", 
+            title="$(config["project_name"])\n- Scenario $(sce), Iterations: $(iteration_num-1), Time: $(round(elapsed_time, digits=2)) seconds\nNo. of active users: $(size(num_user_in, 1))",
             titlefontsize=8,
             size=(600, 400))
     plot!(p, dual_residual, label="Dual Residual")
