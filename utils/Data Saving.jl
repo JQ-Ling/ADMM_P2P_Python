@@ -19,7 +19,7 @@ end
 function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
     train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, path, config, Param_Prosumer, Param_Grid,
-    ledger_for_export)
+    ledger_for_export=nothing)
 
     if isdir(path)
         println("Folder exists: ", path)
@@ -135,8 +135,10 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     open("$(dir_path)/config.json", "w") do f
         JSON.print(f, config, 4)
     end
-    open("$(dir_path)/config_generalization.json", "w") do f
-        JSON.print(f, ledger_for_export, 4) 
+    if ledger_for_export !== nothing
+        open("$(dir_path)/config_generalization.json", "w") do f
+            JSON.print(f, ledger_for_export, 4) 
+        end
     end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)
@@ -179,7 +181,7 @@ function oneSave(primal, dual, P_decision, G_decision, execution_times, optimal_
     CSV.write("$(save_path)/primal_last.csv", DataFrame(primal,:auto), writeheader = false)
     CSV.write("$(save_path)/dual_last.csv", DataFrame(dual,:auto), writeheader = false)
     CSV.write("$(save_path)/P_decision.csv", DataFrame(P_decision,:auto), writeheader = false)
-    CSV.write("$(save_path)/G_decision.csv", DataFrame(G_decision,:auto), writeheader = false)
+    CSV.write("$(save_path)/G_decision.csv", DataFrame(hcat(G_decision...),:auto), writeheader = false)
     CSV.write("$(save_path)/buy_priority.csv", DataFrame(buy_priority,:auto), writeheader = false)
     CSV.write("$(save_path)/sell_priority.csv", DataFrame(sell_priority,:auto), writeheader = false)
     CSV.write("$(save_path)/Pout_last.csv", DataFrame(Pout,:auto), writeheader = false)
@@ -195,7 +197,7 @@ end
 function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_pros_solar_all, loc_prosumer_all,
     execution_times, optimal_num, sce_start, sce_end, infeasible, infeasible_sce, train_primal_error, train_primal_residual,
     train_dual_error, train_dual_residual, train_obj, buy_priority_all, sell_priority_all, pc, te, dir_path, config, Param_Prosumer, Param_Grid,
-    ledger_for_export)
+    ledger_for_export=nothing)
 
     if isdir(dir_path)
         println("Folder exists: ", dir_path)
@@ -358,8 +360,10 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     open("$(dir_path)/config.json", "w") do f
         JSON.print(f, config, 4)
     end
-    open("$(dir_path)/config_generalization.json", "w") do f
-        JSON.print(f, ledger_for_export, 4)
+    if ledger_for_export !== nothing
+        open("$(dir_path)/config_generalization.json", "w") do f
+            JSON.print(f, ledger_for_export, 4) 
+        end
     end
 
     cp(config["ADMM_ver"],"$(dir_path)/$(basename(config["ADMM_ver"]))", force=true)

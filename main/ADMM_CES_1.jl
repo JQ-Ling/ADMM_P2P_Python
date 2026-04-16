@@ -1,10 +1,10 @@
-using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ
+using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, LinearAlgebra, XLSX
 # using PCHIPInterpolation
 # using Statisticspower
 # using StatsBase
 
 # Includes
-include("../subproblems/Analysis/PrioGO_OldVersion_AMD_soft.jl")
+include("../subproblems/Analysis/PrioGO_proximal_DistFlow_AdaptiveCES.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -49,9 +49,26 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 BranchLimit = BranchLimit_data[!, 1] .* 1000
 
 # Save to CSV (unchange throughout all scenarios)
-loc_CES = zeros(1, nb_bus)
-loc_CES[2] = 1
+num_ces = 2  # Number of battery units
+CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
+CES_loc_matrix[1, 19] = 1.0 
+CES_loc_matrix[2, 33] = 1.0
 # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P_Data/33bus/CES_location.csv", DataFrame(loc_CES, :auto))
+
+# LinDistFlow Parameters
+xf = XLSX.readxlsx("D:/Jacky/IEEE33_LinDistFlow_Matrices_PU.xlsx")
+r_pu = xf["Vectors_PU"][2:end,3]
+x_pu = xf["Vectors_PU"][2:end,4]
+
+# 3. Read the A Matrix and a_0 vector
+A_matrix = xf["A_Matrix"][2:end,2:end]    # Read the specific range
+a_0 = xf["Vectors_PU"][2:end, 2]        # Read a_0 column from a "Vectors" sheet
+
+# 4. Convert to proper Julia types for Math
+A_matrix = Float64.(A_matrix)
+a_0 = Float64.(a_0)
+D_r = Diagonal(Float64.(vec(r_pu)))
+D_x = Diagonal(Float64.(vec(x_pu)))
 
 ########################################################################################################
 
@@ -189,10 +206,10 @@ TNBearning_all = zeros(5, 1000)
         
         ####################Load Scenario GRU Pred ###########################
         ## GRU
-        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
+        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
         primal_pred = npzread(primal_pred_location)
         Poutaux_optimal = primal_pred[sce,:,:]
-        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
+        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
         dual_pred = npzread(dual_pred_location)
         λ_optimal = dual_pred[sce,:,:]
         ########################################################################
@@ -207,6 +224,12 @@ TNBearning_all = zeros(5, 1000)
         P_CES0 = (BatteryCap / 2) * ones(num_user)
         P2PTrade = [16 38]
         efficiency_CES = 0.9
+
+        # Grid CES
+        ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
+        lb_CEScd_grid = zeros(hour, num_ces)
+        ub_CES_grid = ones(hour) * [283.52 275.64]
+        Pg_CES0 = ones(hour) * [283.52 275.64] * 0.5
 
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
@@ -236,22 +259,30 @@ TNBearning_all = zeros(5, 1000)
         Param_Grid[:num_bus] = nb_bus
         Param_Grid[:num_branch] = nb_branch
         Param_Grid[:branch_limit] = BranchLimit
-        Param_Grid[:ub_CES] = ub_CES
-        Param_Grid[:lb_CES] = lb_CES
-        Param_Grid[:ub_CESc] = ub_CESc
-        Param_Grid[:lb_CESc] = lb_CESc
-        Param_Grid[:ub_CESd] = ub_CESd
-        Param_Grid[:lb_CESd] = lb_CESd
+        Param_Grid[:ub_CES] = ub_CES_grid
+        Param_Grid[:lb_CES] = lb_CEScd_grid
+        Param_Grid[:ub_CESc] = ub_CEScd_grid
+        Param_Grid[:lb_CESc] = lb_CEScd_grid
+        Param_Grid[:ub_CESd] = ub_CEScd_grid
+        Param_Grid[:lb_CESd] = lb_CEScd_grid
         Param_Grid[:buy_priority] = buy_priority
         Param_Grid[:sell_priority] = sell_priority
         Param_Grid[:efficiency_CES] = efficiency_CES
         Param_Grid[:load_demamd] = net_load'
         Param_Grid[:loc_prosumer] = loc_prosumer
         Param_Grid[:P2PTrade] = P2PTrade
+        Param_Grid[:A_matrix] = A_matrix
+        Param_Grid[:A_trans]  = transpose(A_matrix)
+        Param_Grid[:a_0]      = a_0
+        Param_Grid[:D_r]      = D_r
+        Param_Grid[:D_x]      = D_x
+        Param_Grid[:num_ces]     = num_ces
+        Param_Grid[:CES_loc_matrix] = CES_loc_matrix
+        Param_Grid[:CES0] = Pg_CES0
         # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Param_Grid.csv", Param_Grid)
 
         # parameters inititalize
-        num_dec = 4
+        num_dec = 6
         rho_u = 0.6 #step size
         max_iteration = 5000
         λ = 0 * ones(num_dec * hour, num_user, max_iteration) # λ = [] dual value
@@ -273,9 +304,11 @@ TNBearning_all = zeros(5, 1000)
         Param_Prosumer[:mu] = mu
         Param_Prosumer[:prediction] = Poutaux_optimal
         Param_Prosumer[:pred_inj] = false
+        Param_Prosumer[:num_dec] = num_dec
         Param_Grid[:mu] = mu
         Param_Grid[:prediction] = Poutaux_optimal
         Param_Grid[:pred_inj] = false
+        Param_Grid[:num_dec] = num_dec
 
         iteration_num = 2
         AI_inject_iter = 13
@@ -315,12 +348,12 @@ TNBearning_all = zeros(5, 1000)
                 primal_residual = []
             end
             if iteration_num == AI_inject_iter
-                λ[:,:,iteration_num-1] = λ_optimal
-                Pout_aux = Poutaux_optimal
-                Pout_aux_all[:, :, iteration_num-1] = Pout_aux
+                # λ[:,:,iteration_num-1] = λ_optimal
+                # Pout_aux = Poutaux_optimal
+                # Pout_aux_all[:, :, iteration_num-1] = Pout_aux
 
-                Param_Prosumer[:pred_inj] = true
-                Param_Grid[:pred_inj] = true
+                # Param_Prosumer[:pred_inj] = true
+                # Param_Grid[:pred_inj] = true
             end
 
             times_this_iter = zeros(num_user)
@@ -465,7 +498,7 @@ TNBearning_all = zeros(5, 1000)
     ##################################################################################################################
     # Price calculation #
     ##################################################################################################################
-    # ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
+    ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
 
     ##################################################################################################################
     # Data Saving one scenario #
