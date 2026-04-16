@@ -1,4 +1,4 @@
-using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON, StatsBase
+using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, LinearAlgebra, XLSX, JSON, HTTP
 
 config_name = "config_InterGenTraining_1"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
@@ -58,11 +58,29 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 
 BranchLimit = BranchLimit_data[!,1] .* 1000
 
-# Save to CSV (unchange throughout all scenarios)
-# loc_CES = zeros(1, nb_bus) 
-# loc_CES[2] = 1 # TC1
-# loc_CES[[18 22 25 33]] .= 1 # CES of Prosumer and TNB (same bus)
-# CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/$(path)/CES_location.csv", DataFrame(loc_CES, :auto))
+# (8) CES configurations - Number, Locations and Capacity
+num_ces = config["num_ces"]  # Number of battery units
+CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
+for i = 1:num_ces
+    loc = config["loc_ces"][i]
+    CES_loc_matrix[i, loc] = 1.0
+end
+CSV.write("$(dir_path)/CES_location.csv", DataFrame(CES_loc_matrix, :auto))
+
+# (9) LinDistFlow Parameters
+xf = XLSX.readxlsx("D:/Jacky/IEEE33_LinDistFlow_Matrices_PU.xlsx")
+r_pu = xf["Vectors_PU"][2:end,3]
+x_pu = xf["Vectors_PU"][2:end,4]
+
+# 3. Read the A Matrix and a_0 vector
+A_matrix = xf["A_Matrix"][2:end,2:end]    # Read the specific range
+a_0 = xf["Vectors_PU"][2:end, 2]        # Read a_0 column from a "Vectors" sheet
+
+# 4. Convert to proper Julia types for Math
+A_matrix = Float64.(A_matrix)
+a_0 = Float64.(a_0)
+D_r = Diagonal(Float64.(vec(r_pu)))
+D_x = Diagonal(Float64.(vec(x_pu)))
 
 ########################################################################################################
 
@@ -245,6 +263,12 @@ end
         P2PTrade = [16 38]
         efficiency_CES = 0.9
             
+        # Grid CES
+        ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
+        lb_CEScd_grid = zeros(hour, num_ces)
+        ub_CES_grid = ones(hour) * config["cap_ces"]'
+        Pg_CES0 = ones(hour) * config["cap_ces"]' * 0.5
+
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
         Param_Prosumer[:ub_CES] = ub_CES
@@ -261,6 +285,7 @@ end
         Param_Prosumer[:buy_priority] = buy_priority
         Param_Prosumer[:sell_priority] = sell_priority
         Param_Prosumer[:load_demamd] = net_load'
+        Param_Prosumer[:num_dec] = num_dec
         # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/$(path)/Param_Prosumer.csv", Param_Prosumer)
 
         # save to dictionary for grid operator model
@@ -271,18 +296,27 @@ end
         Param_Grid[:num_bus] = nb_bus
         Param_Grid[:num_branch] = nb_branch
         Param_Grid[:branch_limit] = BranchLimit
-        Param_Grid[:ub_CES] = ub_CES
-        Param_Grid[:lb_CES] = lb_CES
-        Param_Grid[:ub_CESc] = ub_CESc
-        Param_Grid[:lb_CESc] = lb_CESc
-        Param_Grid[:ub_CESd] = ub_CESd
-        Param_Grid[:lb_CESd] = lb_CESd
+        Param_Grid[:ub_CES] = ub_CES_grid
+        Param_Grid[:lb_CES] = lb_CEScd_grid
+        Param_Grid[:ub_CESc] = ub_CEScd_grid
+        Param_Grid[:lb_CESc] = lb_CEScd_grid
+        Param_Grid[:ub_CESd] = ub_CEScd_grid
+        Param_Grid[:lb_CESd] = lb_CEScd_grid
         Param_Grid[:buy_priority] = buy_priority
         Param_Grid[:sell_priority] = sell_priority
         Param_Grid[:efficiency_CES] = efficiency_CES
         Param_Grid[:load_demamd] = net_load'
         Param_Grid[:loc_prosumer] = loc_prosumer
         Param_Grid[:P2PTrade] = P2PTrade
+        Param_Grid[:A_matrix] = A_matrix
+        Param_Grid[:A_trans]  = transpose(A_matrix)
+        Param_Grid[:a_0]      = a_0
+        Param_Grid[:D_r]      = D_r
+        Param_Grid[:D_x]      = D_x
+        Param_Grid[:num_ces]     = num_ces
+        Param_Grid[:CES_loc_matrix] = CES_loc_matrix
+        Param_Grid[:CES0] = Pg_CES0
+        Param_Grid[:num_dec] = num_dec
         # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/$(path)/Param_Grid.csv", Param_Grid)
 
         # parameters inititalize
@@ -467,13 +501,6 @@ end
 
         GC.gc()
     end
-    
-    #################################################################################################################
-    # Price calculation #
-    #################################################################################################################
-
-    # ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade)
-    # oneSave(Pout_aux, reshape(λ[:,:,iteration_num-1],192,32), Prosumer_decision, Grid_decision, execution_times, optimal_num, primal_error, dual_error, primal_residual, dual_residual, obj_all, buy_priority, sell_priority, Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1])
 end
 
 msg = "$(config["project_name"]) - Completed $(tot_sce) scenarios collection."
