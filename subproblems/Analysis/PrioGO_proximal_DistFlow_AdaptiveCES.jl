@@ -269,6 +269,7 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
     net_kW = value.(net_load_kW)
     V_results = value.(v)
     P_line_flows = value.(P_inj)
+    Q_line_flows = value.(Q_inj)
     CES_SOC = value.(PCES)
     CES_charge = value.(Pc)
     CES_discharge = value.(Pd)
@@ -281,7 +282,8 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
         Flows = P_line_flows,
         CES_SOC = CES_SOC,
         CES_Charge = CES_charge,
-        CES_Discharge = CES_discharge
+        CES_Discharge = CES_discharge,
+        Qlows = Q_line_flows,
     )
 
     return obj, Pout_aux_val, grid_results 

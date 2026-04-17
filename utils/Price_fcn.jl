@@ -127,6 +127,7 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     CES_SOC         = Grid_decision[4]
     CES_Charge      = Grid_decision[5]
     CES_Discharge   = Grid_decision[6]
+    Result_Q_br     = Grid_decision[7]
 
     BranchLimit = Param_Grid[:branch_limit]
 
@@ -420,6 +421,18 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     p4 = plot(max_power', 
                 label="Branch Power Flow", 
                 xlabel="Power (kW)", 
+                ylabel="Branch", 
+                yscale=:log10, 
+                title="Power Flow on Branches", 
+                # titlefontsize=8,
+                size=(600, 400))
+    plot!(p4, BranchLimit, label="Branch Limit", linestyle=:dash, linecolor=:red)
+    display(p4)
+
+    max_reactive_power = maximum(Result_Q_br, dims=1)
+    p5 = plot(max_reactive_power', 
+                label="Branch Reactive Power Flow", 
+                xlabel="Reactive Power (kVAR)", 
                 ylabel="Branch", 
                 yscale=:log10, 
                 title="Power Flow on Branches", 
