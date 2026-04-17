@@ -1,4 +1,4 @@
-using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, JSON, HTTP
+using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, LinearAlgebra, XLSX, JSON, HTTP
 
 config_name = "config_testing_1"
 config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
@@ -13,14 +13,7 @@ dir_path = "$(file_dir)/$(path)"
 include(config["ADMM_ver"])
 include("D:/Jacky/Python/ADMM_P2P_Python/utils/Price_fcn.jl")
 include("D:/Jacky/Python/ADMM_P2P_Python/utils/Data Saving.jl") 
-
-# Step # 1 : Obtain Data and setting for Parameter
-# (1) -> Power Consumption
-# (2) -> Solar Generation.
-# (3) -> Net Load
-# (4) -> Bidding Price and Priority
-# (5) -> Final Price
-# (6) -> PTDF
+create_directory(dir_path)
 
 # (1) Power Consumption.
 # PowerConsumption[Prosumer][Hour]
@@ -63,12 +56,29 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 
 BranchLimit = BranchLimit_data[!,1] .* 1000
 
-# Save to CSV (unchange throughout all scenarios)
-# loc_CES = zeros(1, nb_bus)
-# loc_CES[2] = 1 
-# # loc_CES[[18 22 25 33]] .= 1 # CES of Prosumer and TNB (same bus)
-# # loc_CES[[17 21 24 32]] .= 2 # CES of TNB
-# # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/ADMM_P2P_Data/CES_location.csv", DataFrame(loc_CES, :auto))
+# (8) CES configurations - Number, Locations and Capacity
+num_ces = config["num_ces"]  # Number of battery units
+CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
+for i = 1:num_ces
+    loc = config["loc_ces"][i]
+    CES_loc_matrix[i, loc] = 1.0
+end
+CSV.write("$(dir_path)/CES_location.csv", DataFrame(CES_loc_matrix, :auto))
+
+# (9) LinDistFlow Parameters
+xf = XLSX.readxlsx("D:/Jacky/IEEE33_LinDistFlow_Matrices_PU.xlsx")
+r_pu = xf["Vectors_PU"][2:end,3]
+x_pu = xf["Vectors_PU"][2:end,4]
+
+# 3. Read the A Matrix and a_0 vector
+A_matrix = xf["A_Matrix"][2:end,2:end]    # Read the specific range
+a_0 = xf["Vectors_PU"][2:end, 2]        # Read a_0 column from a "Vectors" sheet
+
+# 4. Convert to proper Julia types for Math
+A_matrix = Float64.(A_matrix)
+a_0 = Float64.(a_0)
+D_r = Diagonal(Float64.(vec(r_pu)))
+D_x = Diagonal(Float64.(vec(x_pu)))
 
 ########################################################################################################
 
@@ -235,7 +245,6 @@ TNBearning_all = zeros(5,tot_sce)
         # BatteryCap = 2
 
         #################### Load Scenario AI Pred ###########################
-        ## GRU
         if config["injection"]
             primal_pred_location = config["primal_pred_loc"]
             primal_pred = npzread(primal_pred_location)
@@ -252,55 +261,7 @@ TNBearning_all = zeros(5,tot_sce)
             Poutaux_optimal = Poutaux_optimal'
             λ_optimal = λ_optimal'
         end
-        # Poutaux_optimal = [Poutaux_optimal[97:end,:]; Poutaux_optimal[1:96,:]]
-
-        # ## Transformer
-        # primal_pred_location = "C:/Users/PC/Desktop/JKFYP/p2p_test12_data/large_wd5e-4/primal_pred.npy"
-        # primal_pred = npzread(primal_pred_location)
-        # Poutaux_optimal = primal_pred[sce,:,:]'
-        # # Poutaux_optimal = primal_pred[sce-5000,:,:]'
-        # dual_pred_location = "C:/Users/PC/Desktop/JKFYP/p2p_test12_data/large_wd5e-4/dual_pred.npy"
-        # dual_pred = npzread(dual_pred_location)
-        # λ_optimal = dual_pred[sce,:,:]'
-        # # λ_optimal = dual_pred[sce-5000,:,:]'
-
-        # ## load own optimal solution
-        # # CSV format
-        # primal_file = "D:/Jacky/Data Output/ADMM_P2P/Database/TC1_MILP_olderr_32_new/33bus/primal_$(fs)to$(ls)sce.csv"
-        # dual_file = "D:/Jacky/Data Output/ADMM_P2P/Database/TC1_MILP_olderr_32_new/33bus/dual_$(fs)to$(ls)sce.csv"
-        # primal_gt = Matrix(CSV.File(primal_file, header=true) |> DataFrame)
-        # Poutaux_optimal = reshape(primal_gt, (5, 4*48, num_user, 51))[loc_sce, :, :, end]
-        # dual_gt = Matrix(CSV.File(dual_file, header=true) |> DataFrame)
-        # λ_optimal = reshape(dual_gt, (5, 4*48, num_user, 51))[loc_sce, :, :, end]
-
-        # NPZ format 
-        # primal_opt_loc = "$(testdataset)/primalGRU.npy"
-        # Poutaux_optimal = npzread(primal_opt_loc)[sce,:,:,end]
-        # dual_opt_loc = "$(testdataset)/dualGRU.npy"
-        # λ_optimal = npzread(dual_opt_loc)[sce,:,:,end]
-        # primal_opt_loc = "D:/Jacky/Julia-vscode/ADMM_P2P/AI_pred/Prediction evaluation/adjusted_primal.npz"
-        # Poutaux_optimal = npzread(primal_opt_loc)
-
-        ## Desired RMSE Analysis
-        # primal_opt_loc = "D:/Jacky/Julia-vscode/ADMM_P2P/AI_pred/Prediction evaluation/adjusted_primal.npz"
-        # Poutaux_optimal = npzread(primal_opt_loc)
-
-        ## P2P trade error Analysis
-        # primal_opt_loc = "$(testdataset)/primalGRU.npy"
-        # mid_primal = npzread(primal_opt_loc)[sce,:,:,300]
-        # Poutaux_optimal[3*hour+1:4*hour, 1:15] = mid_primal[3*hour+1:4*hour, 1:15]
-        # Poutaux_optimal[2*hour+1:3*hour, 16:end] = mid_primal[2*hour+1:3*hour, 16:end]
-
-        # #### Post-Processing ####
-        # P_load = net_load'
-        # B_load = zeros(size(P_load))
-        # B_load[findall(P_load .> 0)] .= 1 # 1 = TNL, 0 = TSE
-    
-        # obj_pred, Poutaux_optimal, _ = Subproblem_Grid_Operator(Param_Grid, Poutaux_optimal, λ_optimal, 1)
-        # Poutaux_optimal[193:240,:] = Poutaux_optimal[193:240,:] .* B_load
-        # Poutaux_optimal[241:end,:] = Poutaux_optimal[241:end,:] .* (1 .- B_load)
-        # Poutaux_optimal[findall(x->x<1e-4, Poutaux_optimal)] .= 0
-        # ########################################################################
+        ########################################################################
 
         ub_CES = BatteryCap * ones(hour, nb_prosumer) #upper bound of CES capacity for each prosumers
         lb_CES = zeros(hour, nb_prosumer)
@@ -312,6 +273,12 @@ TNBearning_all = zeros(5,tot_sce)
         P_CES0 = (BatteryCap / 2) * ones(nb_prosumer)
         P2PTrade = [16 38]
         efficiency_CES = 0.9
+
+        # Grid CES
+        ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
+        lb_CEScd_grid = zeros(hour, num_ces)
+        ub_CES_grid = ones(hour) * config["cap_ces"]'
+        Pg_CES0 = ones(hour) * config["cap_ces"]' * 0.5
         
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
@@ -329,6 +296,7 @@ TNBearning_all = zeros(5,tot_sce)
         Param_Prosumer[:buy_priority] = buy_priority
         Param_Prosumer[:sell_priority] = sell_priority
         Param_Prosumer[:load_demamd] = net_load'
+        Param_Prosumer[:num_dec] = num_dec
 
         # save to dictionary for grid operator model
         Param_Grid = Dict()
@@ -338,18 +306,27 @@ TNBearning_all = zeros(5,tot_sce)
         Param_Grid[:num_bus] = nb_bus
         Param_Grid[:num_branch] = nb_branch
         Param_Grid[:branch_limit] = BranchLimit
-        Param_Grid[:ub_CES] = ub_CES
-        Param_Grid[:lb_CES] = lb_CES
-        Param_Grid[:ub_CESc] = ub_CESc
-        Param_Grid[:lb_CESc] = lb_CESc
-        Param_Grid[:ub_CESd] = ub_CESd
-        Param_Grid[:lb_CESd] = lb_CESd
+        Param_Grid[:ub_CES] = ub_CES_grid
+        Param_Grid[:lb_CES] = lb_CEScd_grid
+        Param_Grid[:ub_CESc] = ub_CEScd_grid
+        Param_Grid[:lb_CESc] = lb_CEScd_grid
+        Param_Grid[:ub_CESd] = ub_CEScd_grid
+        Param_Grid[:lb_CESd] = lb_CEScd_grid
         Param_Grid[:buy_priority] = buy_priority
         Param_Grid[:sell_priority] = sell_priority
         Param_Grid[:efficiency_CES] = efficiency_CES
         Param_Grid[:load_demamd] = net_load'
         Param_Grid[:loc_prosumer] = loc_prosumer
         Param_Grid[:P2PTrade] = P2PTrade
+        Param_Grid[:A_matrix] = A_matrix
+        Param_Grid[:A_trans]  = transpose(A_matrix)
+        Param_Grid[:a_0]      = a_0
+        Param_Grid[:D_r]      = D_r
+        Param_Grid[:D_x]      = D_x
+        Param_Grid[:num_ces]     = num_ces
+        Param_Grid[:CES_loc_matrix] = CES_loc_matrix
+        Param_Grid[:CES0] = Pg_CES0
+        Param_Grid[:num_dec] = num_dec
 
         # parameters inititalize
         rho_u = 0.6 #step size

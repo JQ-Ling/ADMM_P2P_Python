@@ -4,7 +4,7 @@ using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, LinearAl
 # using StatsBase
 
 # Includes
-include("../subproblems/Analysis/PrioGO_proximal_DistFlow_AdaptiveCES.jl")
+include("../subproblems/Analysis/PrioGO_proximal_DistFlow_AdaptiveCES_4Dec.jl")
 include("../utils/Price_fcn.jl")
 include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/Sol_feasibility.jl")
@@ -206,12 +206,12 @@ TNBearning_all = zeros(5, 1000)
         
         ####################Load Scenario GRU Pred ###########################
         ## GRU
-        primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
-        primal_pred = npzread(primal_pred_location)
-        Poutaux_optimal = primal_pred[sce,:,:]
-        dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
-        dual_pred = npzread(dual_pred_location)
-        λ_optimal = dual_pred[sce,:,:]
+        # primal_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/primal_pred.npy"
+        # primal_pred = npzread(primal_pred_location)
+        # Poutaux_optimal = primal_pred[sce,:,:]
+        # dual_pred_location = "D:/Jacky/Data Output/ADMM_P2P/Database/Test and Eval/2.1Plain PrioGO version chaos/LP_PrioGO_test_20_OldSame/predictions/dual_pred.npy"
+        # dual_pred = npzread(dual_pred_location)
+        # λ_optimal = dual_pred[sce,:,:]
         ########################################################################
 
         ub_CES = BatteryCap * ones(hour, num_user) #upper bound of CES capacity for each prosumers
@@ -282,7 +282,7 @@ TNBearning_all = zeros(5, 1000)
         # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Param_Grid.csv", Param_Grid)
 
         # parameters inititalize
-        num_dec = 6
+        num_dec = 4
         rho_u = 0.6 #step size
         max_iteration = 5000
         λ = 0 * ones(num_dec * hour, num_user, max_iteration) # λ = [] dual value
@@ -302,11 +302,11 @@ TNBearning_all = zeros(5, 1000)
         mu = rho_u
         decay = 0.95
         Param_Prosumer[:mu] = mu
-        Param_Prosumer[:prediction] = Poutaux_optimal
+        # Param_Prosumer[:prediction] = Poutaux_optimal
         Param_Prosumer[:pred_inj] = false
         Param_Prosumer[:num_dec] = num_dec
         Param_Grid[:mu] = mu
-        Param_Grid[:prediction] = Poutaux_optimal
+        # Param_Grid[:prediction] = Poutaux_optimal
         Param_Grid[:pred_inj] = false
         Param_Grid[:num_dec] = num_dec
 
