@@ -26,7 +26,7 @@
     "is_csv": true,
     "relaxation parameter": 1.5,
     "primal_pred_loc": "D:\\Jacky\\Data Output\\ADMM_P2P\\Database\\Test and Eval\\LP_PrioGO-LDF-mulCES_test_InterGen_100sce\\predictions\\Transformer 1D-CNN\\T7\\primal_pred_post.npy",
-    "last_processed_index": 15,
+    "last_processed_index": 100,
     "threshold": 0.001,
     "transformer": true,
     "project_name": "Eval_TransT7_PrioGO-LDF-mulCES_InterGen_post_WS_100sce",
