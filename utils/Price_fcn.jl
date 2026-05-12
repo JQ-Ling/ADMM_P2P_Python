@@ -1,4 +1,4 @@
-using Printf
+using Printf, Statistics
 
 function PrioConversion(Prio, Excess, netload, BS)
     nb_prosumer = size(Prio, 1)  # number of prosumers
@@ -131,8 +131,8 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
 
     BranchLimit = Param_Grid[:branch_limit]
 
-    final_buy_price = sum(buy_bp, dims=1) / 32
-    final_sell_price = sum(sell_bp, dims=1) / 32
+    final_buy_price = sum(buy_bp, dims=1) / nb_prosumer
+    final_sell_price = sum(sell_bp, dims=1) / nb_prosumer
 
     NetLoad = net_load' + Result_Charge - Result_Discharge
     # NetLoad = net_load'
@@ -465,8 +465,8 @@ function ProfitCal(Prosumer_decision, buy_priority, sell_priority, total_excess,
 
     # Result_net_load = Grid_decision[0*hour+1:1*hour, :]
     # Result_P_br = Grid_decision[1*hour+1:2*hour, :]
-    final_buy_price = sum(buy_bp, dims=1) / 32
-    final_sell_price = sum(sell_bp, dims=1) / 32
+    final_buy_price = sum(buy_bp, dims=1) / nb_prosumer
+    final_sell_price = sum(sell_bp, dims=1) / nb_prosumer
 
     NetLoad = net_load' + Result_Charge - Result_Discharge
     # NetLoad = net_load'
@@ -538,19 +538,128 @@ function r_2(y_true, y_pred)
     return r2
 end
 
-# function get_solutions(model)
-#     ### Get the solution of the mdoel
+function plot_all(Prosumer_decision, Grid_decision, buy_bp, sell_bp, bus_sys, sce)
+    # import Statistics
+    # (1) Power Consumption.
+    # PowerConsumption[Prosumer][Hour]
+    char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_$(bus_sys)_bus.csv"
+    power_consumption_data = (CSV.File(char_data_location_1) |> DataFrame)
+    LoadScaler = 1
+    power_consumption = Matrix(power_consumption_data) ./2 .* LoadScaler
+    hour, num_user = size(power_consumption_data)
 
-#     solutions = []
-#     if JuMP.get_optimizer_attribute(model, "PoolSearchMode") == 2
-#         sol_count = MOI.get(model, Gurobi.ModelAttribute("SolCount"))
-#         for i in 1:sol_count
-#             JuMP.set_optimizer_attribute(model, "SolutionNumber", i)
-#             solution = MOI.get(model, Gurobi.ModelAttribute("Xn"))
-#         end
-#     else
+    # (2) Solar
+    # Solar[Hour]
+    char_data_location_2 = "D:/Jacky/Julia-vscode/ADMM_P2P/Solar_interpolated_6000.csv"
+    net_load_data = CSV.File(char_data_location_2, header=true) |> DataFrame
 
-#     end
-    
-#     return
-# end
+    SolarScaler = 1.5
+    interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
+    solar = interpolated_solar_scenarios[sce,:]
+
+    pros_solar = Int(ceil(num_user / 2))
+    net_load = copy(power_consumption')
+    net_load[pros_solar:end, :] .-= solar'
+    total_solar = solar .* ones(hour, pros_solar)
+
+    # p = plot(title="Net load demand for each prosumers",ylabel = "Energy (kWh)", xlabel="time (per 30 min)")
+    # plot!(p, power_consumption)
+    # plot!(p, solar)
+    # plot!(p, net_load')
+    # display(p)
+
+    p = plot(title="Total net load demand in P2P market",ylabel = "Energy (kWh)", xlabel="time (per 30 min)")
+    plot!(p, sum(power_consumption,dims=2), label="total power consumption")
+    plot!(p, sum(total_solar,dims=2),label="total solar generation")
+    plot!(p, sum(net_load',dims=2),label="total net load")
+    display(p)
+
+    Result_Grid_buy = Prosumer_decision[0*hour+1:1*hour, :]
+    Result_Grid_sell = Prosumer_decision[1*hour+1:2*hour, :]
+    Result_bat_lv = Prosumer_decision[2*hour+1:3*hour, :]
+    Result_Charge = Prosumer_decision[3*hour+1:4*hour, :]
+    Result_Discharge = Prosumer_decision[4*hour+1:5*hour, :]
+    Result_P2P_buy = Prosumer_decision[5*hour+1:6*hour, :]
+    Result_P2P_sell = Prosumer_decision[6*hour+1:7*hour, :]
+    Result_B_charge = Prosumer_decision[7*hour+1:8*hour, :]
+
+    bus_voltage     = Grid_decision[2]
+    Result_P_br     = Grid_decision[3]
+    CES_lv          = Grid_decision[4]
+    CES_Charge      = Grid_decision[5]
+    CES_Discharge   = Grid_decision[6]
+    Result_Q_br     = Grid_decision[7]
+
+    Pc_from_g = Pout_aux_all[0*hour+1:1*hour, :, iteration_num-1]
+    Pd_from_g = Pout_aux_all[1*hour+1:2*hour, :, iteration_num-1]
+    time_axis = collect(LinRange(0,24,48))
+
+    legendc = ["Cons $i" for i in 1:pros_solar-1]
+    legendp = ["Pros $i" for i in 1:num_user-pros_solar+1]
+    # legendd = ["Cus 1" "Cus 2" "Pros $i" for i in 3:32]
+    labell = ["Buy Grid" "Sell Grid" "Capacity level" "Charge" "Discharge" "Buy P2P" "Sell P2P" "Branch Power" "TNB owned CES Level" "Prosumer subscribed CES Level" "Prosumer subscribed CES Charge" "Prosumer subscribed CES Discharge" "TNB owned CES Charge" "TNB owned CES  Discharge"]
+    for i in 1:7
+        p = plot()
+        for j in 1:pros_solar-1
+        # for j in 1:2
+            plot!(p, Prosumer_decision[(i-1)*hour+1:i*hour, j],title="$(labell[i]) (Consumers)", label="$(legendc[j])", legend=false, ylabel = "Energy (kWh)", xlabel="time (per 30 min)")
+        end
+        display(p)
+        p = plot()
+        for j in pros_solar:num_user
+        # for j in 3:5
+            plot!(p, Prosumer_decision[(i-1)*hour+1:i*hour, j],title="$(labell[i]) (Prosumers)", label="$(legendp[j-pros_solar+1])", legend=false, ylabel = "Energy (kWh)", xlabel="time (per 30 min)")
+            # plot!(p, Prosumer_decision[(i-1)*hour+1:i*hour, j],title="$(labell[i]) (Prosumers)", label="$(legendc[j])", legend=false, ylabel = "Energy (kWh)", xlabel="time (per 30 min)")
+        end
+        display(p)
+    end
+
+
+    println("#######################################")
+    print("Range of bidding (buy) price                 : ")
+    print(round(Statistics.mean(buy_bp),digits=2))
+    print(" ± ")
+    print(round(Statistics.std(buy_bp),digits=2))
+    println(" RM/kWh")
+
+    print("Range of bidding (sell) price                : ")
+    print(round(Statistics.mean(sell_bp),digits=2))
+    print(" ± ")
+    print(round(Statistics.std(sell_bp),digits=2))
+    println(" RM/kWh")
+    load_day = sum(power_consumption)
+    solar_day = sum(total_solar)
+    println("Power consumption (%)                      : ", round(load_day/(load_day+solar_day)*100, digits=2))
+    println("Solar generation (%)                       : ", round(solar_day/(load_day+solar_day)*100,digits=2))
+
+    # CxD = abs.(Result_Charge.*Result_Discharge)
+    CxD = (Result_Charge .> 1e-4) .& (Result_Discharge .> 1e-4)
+    # CxD[findall(x->x<1e-4, CxD)] .= 0
+    num_zeros = count(isone, CxD)
+    percentage = (num_zeros)/length(CxD) *100
+    println("Prosumer (Pout) |Pc*Pd| > 10e-4 [%]        : $(round(percentage, digits=2))")
+
+    # CxD = abs.(Pc_from_g.*Pd_from_g)
+    CxD = (Pc_from_g .> 1e-4) .& (Pd_from_g .> 1e-4)
+    # CxD[findall(x->x<1e-4, CxD)] .= 0
+    num_zeros = count(isone, CxD)
+    # percentage = (length(CxD) - num_zeros)/length(CxD) *100
+    percentage = (num_zeros)/length(CxD) *100
+    println("Prosumer (Pout_aux) |Pc*Pd| > 10e-4 [%]    : $(round(percentage, digits=2))")
+
+    println("Iteration taken                            : $iteration_num")
+    println("Infeasible                                 : $infeasible")
+
+    # Printing error
+    println()
+    label = ["Charge" "Discharge" "P2P buy" "P2P sell" "Solar used"]
+    for i in 1:4 
+        print("$(label[i])                              : ")
+        println(round(sum(abs.(Pout[(i-1)*hour+1:i*hour,:].-Pout_aux[(i-1)*hour+1:i*hour,:])), digits=4))
+    end
+
+    println()
+    println("Primal Error in last iteration             : $(round(primal_error[end], digits=4))")
+    println("Dual Error in last iteration               : $(round(dual_error[end], digits=4))")
+    println()
+end
