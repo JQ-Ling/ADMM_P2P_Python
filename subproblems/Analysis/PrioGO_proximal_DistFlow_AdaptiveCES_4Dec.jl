@@ -77,6 +77,10 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     @constraint(Prosumer_model, [i in 1:hour-1],    P_CES[i+1] .== P_CES[i] + (η * P_c[i]) - (P_d[i] / η))
     @constraint(Prosumer_model,                     P_CES[1] .== P_CES[end] + (η * P_c[end]) - (P_d[end] / η))
 
+    # To disable CES
+    # @constraint(Prosumer_model, P_c .== 0)
+    # @constraint(Prosumer_model, P_d .== 0)
+
     # Primal definition
     # @constraint(Prosumer_model, P_out .== [P_c; P_d; P_buy; P_sell; Pg_buy; Pg_sell])
     @constraint(Prosumer_model, P_out .== [P_c; P_d; P_buy; P_sell])
