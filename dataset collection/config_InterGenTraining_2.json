@@ -7,7 +7,7 @@
     "sce_start": 1,
     "sce_end": 100,
     "threshold": 0.001,
-    "last_train_gen_index": 0,
+    "last_train_gen_index": 1,
     "save_csv": true,
     "iter_save": 50,
     "num_ces": 2,
