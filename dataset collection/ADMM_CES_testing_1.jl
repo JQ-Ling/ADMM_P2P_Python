@@ -87,6 +87,7 @@ config["last_processed_index"] == 0 ? sce_start = config["sce_start"] : sce_star
 sce_end = config["sce_end"]
 tot_sce = sce_end - config["sce_start"] + 1
 
+println("Project: ", config["project_name"])
 println("Collection started: ", sce_start, " to ", sce_end)
 
 num_dec = config["number of decisions"]
@@ -248,19 +249,19 @@ TNBearning_all = zeros(5,tot_sce)
         if config["injection"]
             primal_pred_location = config["primal_pred_loc"]
             primal_pred = npzread(primal_pred_location)
-            Poutaux_optimal = primal_pred[sce,:,:]
+            Poutaux_optimal = primal_pred[sce,:,:]'
         end
         
         if config["injection"]
             dual_pred_location = config["dual_pred_loc"]
             dual_pred = npzread(dual_pred_location)
-            λ_optimal = dual_pred[sce,:,:]
+            λ_optimal = dual_pred[sce,:,:]'
         end
 
-        if config["transformer"]
-            Poutaux_optimal = Poutaux_optimal'
-            λ_optimal = λ_optimal'
-        end
+        # if config["transformer"]
+        #     Poutaux_optimal = Poutaux_optimal'
+        #     λ_optimal = λ_optimal'
+        # end
         ########################################################################
 
         ub_CES = BatteryCap * ones(hour, nb_prosumer) #upper bound of CES capacity for each prosumers
