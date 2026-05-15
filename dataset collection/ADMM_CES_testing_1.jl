@@ -7,6 +7,10 @@ path = config["project_name"]
 testdataset = config["testdataset"]
 iter_save = config["iter_save"]
 
+test_config_path = "$(testdataset)/config.json"
+test_config = JSON.parsefile(test_config_path)
+bus_sys = test_config["bus_sys"]
+
 file_dir = "D:/Jacky/Data Output/ADMM_P2P/New"
 dir_path = "$(file_dir)/$(path)"
 
@@ -17,7 +21,7 @@ create_directory(dir_path)
 
 # (1) Power Consumption.
 # PowerConsumption[Prosumer][Hour]
-char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_33_bus.csv"
+char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_$(bus_sys)_bus.csv"
 power_consumption_data = (CSV.File(char_data_location_1) |> DataFrame)
 LoadScaler = 1
 power_consumption = Matrix(power_consumption_data) ./2 .* LoadScaler
@@ -40,7 +44,7 @@ SolarScaler = 1
 interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
 
 # (6) PTDF
-ptdf_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/radial33bus_PTDF.csv"
+ptdf_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/radial$(bus_sys)bus_PTDF.csv"
 ptdf_data = CSV.File(ptdf_file_location, header=false) |> DataFrame
 
 nb_bus = size(ptdf_data, 2)
@@ -51,7 +55,7 @@ println("nbBus: ", nb_bus)
 println("nbBranch: ", nb_branch)
 
 # (7) Branch limit
-BranchLimit_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/33_bus_limit_data.csv"
+BranchLimit_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/$(bus_sys)_bus_limit_data.csv"
 BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 
 BranchLimit = BranchLimit_data[!,1] .* 1000
@@ -66,7 +70,7 @@ end
 CSV.write("$(dir_path)/CES_location.csv", DataFrame(CES_loc_matrix, :auto))
 
 # (9) LinDistFlow Parameters
-xf = XLSX.readxlsx("D:/Jacky/IEEE33_LinDistFlow_Matrices_PU.xlsx")
+xf = XLSX.readxlsx("D:/Jacky/IEEE$(bus_sys)_LinDistFlow_Matrices_PU.xlsx")
 r_pu = xf["Vectors_PU"][2:end,3]
 x_pu = xf["Vectors_PU"][2:end,4]
 
@@ -224,10 +228,10 @@ TNBearning_all = zeros(5,tot_sce)
         end
 
         # BuyPriority[Prosumer][Time Step]   SellPriority[Prosumer][Time Step]
-        bpp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_price_33.csv"
-        spp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_price_33.csv"
-        # bp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_priority_33.csv"
-        # sp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_priority_33.csv"
+        bpp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_price_$(bus_sys).csv"
+        spp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_price_$(bus_sys).csv"
+        # bp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_priority_$(bus_sys).csv"
+        # sp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_priority_$(bus_sys).csv"
 
         buy_bp = Matrix(CSV.File(bpp_file, header=false) |> DataFrame)
         sell_bp = Matrix(CSV.File(spp_file, header=false) |> DataFrame)
