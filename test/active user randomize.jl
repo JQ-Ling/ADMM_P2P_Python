@@ -47,7 +47,7 @@ end
 # =====================================================================
 # 2. THE TEST ENVIRONMENT
 # =====================================================================
-println("Starting Test...")
+println("Starting Unique User Set Test...")
 
 # Dummy Variables
 nb_prosumer = 5             # Tiny grid so we hit the limit fast
@@ -75,6 +75,44 @@ for sce in 1:20
         loc_prosumer
     )
     println("  Resulting Active Users: ", sort(_rand_user_active))
+end
+
+println("\nTest Complete! It didn't freeze!")
+println()
+println()
+println("==============================================================")
+println("Starting Diff user step Test...")
+
+# Dummy Variables
+gen_mmode = [1, 2, 5, 10, 7] 
+gen_sstart = [1, 0, 0, 0, 0] 
+steps = 5
+gen_mode = gen_mmode[steps]
+gen_start = gen_sstart[steps]
+
+num_user = 32
+loc_prosumer = zeros(33, 5)  # Dummy grid
+history_combinations = Set{Tuple}() # Using Set for lightning-fast lookups!
+ledger_for_export = []
+
+# Run 8 Scenarios (It should find 5 unique, then repeat 3 times safely)
+for sce in 1:20
+    global gen_mode, gen_start, gen_step
+    println("\n--- Running Scenario $sce ---")
+    if gen_mode < 5
+        gen_step = 2
+    else
+        gen_step = gen_mode
+    end
+    if gen_mode == 1
+        gen_start + gen_step > num_user ? gen_start = abs.(gen_start - num_user) + gen_step : gen_start += gen_step
+    else
+        gen_start + gen_step > num_user ? gen_start = gen_step : gen_start += gen_step
+    end
+    _num_user_active = gen_start
+    println("  Gen Mode: ", gen_mode, " | Gen Step: ", gen_step, " | Gen Start: ", gen_start)
+
+    println("  Resulting No. of Active Users: ", gen_start)
 end
 
 println("\nTest Complete! It didn't freeze!")
