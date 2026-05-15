@@ -3,3 +3,5 @@ output/**
 data/** 
 
 test/http_test.jl
+
+*.zip
