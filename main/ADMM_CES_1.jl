@@ -11,14 +11,17 @@ include("../utils/Data Saving.jl")
 # include("AI_pred/Prediction evaluation/KKT_checking.jl")
 
 # === Step #1: Load Data ===
-bus_sys = 33
+bus_sys = 69
 
 # (1) Power Consumption.
 # PowerConsumption[Prosumer][Hour]
 char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_$(bus_sys)_bus.csv"
 power_consumption_data = (CSV.File(char_data_location_1) |> DataFrame)
-LoadScaler = 1
+LoadScaler = 20
 power_consumption = Matrix(power_consumption_data) ./2 .* LoadScaler
+power_consumption[:,26] *= 20
+power_consumption[:,34] *= 20
+power_consumption[:,51] *= 20
 
 hour, num_user = size(power_consumption_data)
 
@@ -30,7 +33,7 @@ println("No. Time Step = ", hour)
 char_data_location_2 = "D:/Jacky/Julia-vscode/ADMM_P2P/Solar_interpolated_6000.csv"
 net_load_data = CSV.File(char_data_location_2, header=true) |> DataFrame
 
-SolarScaler = 1
+SolarScaler = 20
 # SolarScaler = 1.5
 interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
 
@@ -49,14 +52,16 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 BranchLimit = BranchLimit_data[!, 1] .* 1000
 
 # (8) CES configurations - Number, Locations and Capacity
-num_ces = 2  # Number of battery units
+num_ces = 8
+ces_loc = [27, 35, 46, 50, 52, 65, 67, 69]
 CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
-CES_loc_matrix[1, 19] = 1.0 
-CES_loc_matrix[2, 33] = 1.0
-# CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P_Data/33bus/CES_location.csv", DataFrame(loc_CES, :auto))
+for i = 1:num_ces
+    loc = ces_loc[i]
+    CES_loc_matrix[i, loc] = 1.0
+end
 
 # (9) LinDistFlow Parameters
-xf = XLSX.readxlsx("D:/Jacky/IEEE33_LinDistFlow_Matrices_PU.xlsx")
+xf = XLSX.readxlsx("D:/Jacky/Python/ADMM_P2P_Python/data/IEEE$(bus_sys)_LinDistFlow_Matrices_PU.xlsx")
 r_pu = xf["Vectors_PU"][2:end,3]
 x_pu = xf["Vectors_PU"][2:end,4]
 
@@ -226,10 +231,11 @@ TNBearning_all = zeros(5, 1000)
         efficiency_CES = 0.9
 
         # Grid CES
+        ces_size = [309 309 309 309 309 309 309 309]
         ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
         lb_CEScd_grid = zeros(hour, num_ces)
-        ub_CES_grid = ones(hour) * [283.52 275.64]
-        Pg_CES0 = ones(hour) * [283.52 275.64] * 0.5
+        ub_CES_grid = ones(hour) * ces_size
+        Pg_CES0 = ones(hour) * ces_size * 0.5
 
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
@@ -497,7 +503,8 @@ TNBearning_all = zeros(5, 1000)
     # Price calculation #
     ##################################################################################################################
     ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priority, total_excess, net_load, buy_bp, sell_bp, tnb_cost, power_consumption, SolarScaler, BatteryCap, P2PTrade, Param_Grid)
-
+    # plot_all(Prosumer_decision, Grid_decision, buy_bp, sell_bp, bus_sys, sce)
+    
     ##################################################################################################################
     # Data Saving one scenario #
     ##################################################################################################################
