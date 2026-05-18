@@ -1,10 +1,11 @@
 # Run this once in Julia: using Pkg; Pkg.add(["Oxygen", "HTTP", "JSON3"])
 using Oxygen, HTTP, JSON3
-include("Centralized_CES_Model.jl")
+include("../subproblems/CO_Placement.jl")
 using .Centralized_CES_Model
 
 # Initialize the 69-bus data once at startup
-Centralized_CES_Model.setup_data(69)
+bus_sys = 69
+Centralized_CES_Model.setup_data(bus_sys)
 
 # Define the "Endpoint" that MATLAB will call
 @post "/evaluate" function(req::HTTP.Request)
@@ -18,6 +19,8 @@ Centralized_CES_Model.setup_data(69)
     
     # Run optimization
     results = Centralized_CES_Model.evaluate_fitness(sizes, locs)
+    
+    GC.gc() 
     
     # Send results back as JSON
     return results
