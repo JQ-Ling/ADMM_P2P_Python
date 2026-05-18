@@ -70,7 +70,7 @@ end
 CSV.write("$(dir_path)/CES_location.csv", DataFrame(CES_loc_matrix, :auto))
 
 # (9) LinDistFlow Parameters
-xf = XLSX.readxlsx("D:/Jacky/IEEE$(bus_sys)_LinDistFlow_Matrices_PU.xlsx")
+xf = XLSX.readxlsx("D:/Jacky/Python/ADMM_P2P_Python/data/IEEE$(bus_sys)_LinDistFlow_Matrices_PU.xlsx")
 r_pu = xf["Vectors_PU"][2:end,3]
 x_pu = xf["Vectors_PU"][2:end,4]
 
