@@ -376,7 +376,7 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     # end
 
     num_CES = size(CES_lv, 2)
-    CES_cap = CES_lv[1,:]'
+    CES_cap = CES_lv[1,:]' .* 2
     CES_SOC = copy(CES_lv)
     CES_SOC ./= CES_cap
     p = plot(CES_SOC[:,1], 
@@ -420,25 +420,27 @@ function ResultPrint(Prosumer_decision, Grid_decision, buy_priority, sell_priori
     end
     display(p3)
 
-    max_power = maximum(Result_P_br, dims=1)
+    max_power = maximum(abs.(Result_P_br), dims=1)
+    pass = sum(max_power .< BranchLimit') != 0
     p4 = plot(max_power', 
                 label="P", 
                 ylabel="Active Power (kW)", 
                 xlabel="Branch", 
                 yscale=:log10, 
-                title="Active Power Flow on Branches", 
+                title="Active Power Flow on Branches (Pass: $pass)", 
                 # titlefontsize=8,
                 size=(600, 400))
     plot!(p4, BranchLimit, label="Branch Limit", linestyle=:dash, linecolor=:red)
     display(p4)
 
-    max_reactive_power = maximum(Result_Q_br, dims=1)
+    max_reactive_power = maximum(abs.(Result_Q_br), dims=1)
+    pass = sum(max_reactive_power .< BranchLimit') != 0
     p5 = plot(max_reactive_power', 
                 label="Q", 
                 ylabel="Reactive Power (kVAR)", 
                 xlabel="Branch", 
                 yscale=:log10, 
-                title="Reactive Power Flow on Branches", 
+                title="Reactive Power Flow on Branches (Pass: $pass)", 
                 # titlefontsize=8,
                 size=(600, 400))
     plot!(p5, BranchLimit, label="Branch Limit", linestyle=:dash, linecolor=:red)
