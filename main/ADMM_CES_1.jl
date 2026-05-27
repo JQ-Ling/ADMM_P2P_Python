@@ -17,11 +17,11 @@ bus_sys = 69
 # PowerConsumption[Prosumer][Hour]
 char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_$(bus_sys)_bus.csv"
 power_consumption_data = (CSV.File(char_data_location_1) |> DataFrame)
-LoadScaler = 20
+LoadScaler = 10
 power_consumption = Matrix(power_consumption_data) ./2 .* LoadScaler
-power_consumption[:,26] *= 20
-power_consumption[:,34] *= 20
-power_consumption[:,51] *= 20
+power_consumption[:,26] *= 6
+power_consumption[:,34] *= 6
+power_consumption[:,51] *= 6
 
 hour, num_user = size(power_consumption_data)
 
@@ -33,7 +33,7 @@ println("No. Time Step = ", hour)
 char_data_location_2 = "D:/Jacky/Julia-vscode/ADMM_P2P/Solar_interpolated_6000.csv"
 net_load_data = CSV.File(char_data_location_2, header=true) |> DataFrame
 
-SolarScaler = 20
+SolarScaler = 10
 # SolarScaler = 1.5
 interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
 
@@ -52,8 +52,8 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 BranchLimit = BranchLimit_data[!, 1] .* 1000
 
 # (8) CES configurations - Number, Locations and Capacity
-num_ces = 8
 ces_loc = [27, 35, 46, 50, 52, 65, 67, 69]
+num_ces = length(ces_loc)
 CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
 for i = 1:num_ces
     loc = ces_loc[i]
@@ -114,8 +114,18 @@ TNBearning_all = zeros(5, 1000)
         max_pros = nb_bus / 3
         pros_solar = Int(ceil(num_user / 2))
         net_load = copy(power_consumption')
-        net_load[pros_solar:end, :] .-= 1.5 * solar'
 
+        for u in 1:num_user
+            if u in [0] # 0 is to disable
+                println(u)
+                net_load[u, :] .-= 1.5 .* solar .* 15
+            elseif u >= pros_solar
+                println(u)
+                net_load[u, :] .-= 1.5 .* solar
+            end
+        end
+
+        break
         loc_prosumer = zeros(num_user, nb_bus)
         for i in 1:num_user
             loc_prosumer[i, i+1] = 1
@@ -234,8 +244,8 @@ TNBearning_all = zeros(5, 1000)
         ces_size = [309 309 309 309 309 309 309 309]
         ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
         lb_CEScd_grid = zeros(hour, num_ces)
-        ub_CES_grid = ones(hour) * ces_size
-        Pg_CES0 = ones(hour) * ces_size * 0.5
+        ub_CES_grid = ones(hour) .* ces_size
+        Pg_CES0 = ones(hour) .* ces_size .* 0.5
 
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()

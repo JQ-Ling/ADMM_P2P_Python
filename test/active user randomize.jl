@@ -86,7 +86,7 @@ println("Starting Diff user step Test...")
 # Dummy Variables
 gen_mmode = [1, 2, 5, 10, 7] 
 gen_sstart = [1, 0, 0, 0, 0] 
-steps = 5
+steps = 3
 gen_mode = gen_mmode[steps]
 gen_start = gen_sstart[steps]
 
@@ -95,8 +95,7 @@ loc_prosumer = zeros(33, 5)  # Dummy grid
 history_combinations = Set{Tuple}() # Using Set for lightning-fast lookups!
 ledger_for_export = []
 
-# Run 8 Scenarios (It should find 5 unique, then repeat 3 times safely)
-for sce in 1:20
+for sce in 1:33
     global gen_mode, gen_start, gen_step
     println("\n--- Running Scenario $sce ---")
     if gen_mode < 5
@@ -107,7 +106,13 @@ for sce in 1:20
     if gen_mode == 1
         gen_start + gen_step > num_user ? gen_start = abs.(gen_start - num_user) + gen_step : gen_start += gen_step
     else
-        gen_start + gen_step > num_user ? gen_start = gen_step : gen_start += gen_step
+        if true
+            gen_start == 0 ? gen_start = 2 : nothing
+            gen_start + 1 > num_user ? gen_start = 3 : gen_start += 1
+            gen_start % gen_step == 0 ? gen_start += 1 : nothing
+        else
+            gen_start + gen_step > num_user ? gen_start = gen_step : gen_start += gen_step
+        end
     end
     _num_user_active = gen_start
     println("  Gen Mode: ", gen_mode, " | Gen Step: ", gen_step, " | Gen Start: ", gen_start)

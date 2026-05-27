@@ -52,8 +52,8 @@ BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 BranchLimit = BranchLimit_data[!, 1] .* 1000
 
 # (8) CES configurations - Number, Locations and Capacity
-num_ces = 8
-ces_loc = [27, 35, 46, 50, 52, 65, 67, 69]
+ces_loc = [2]
+num_ces = length(ces_loc)
 CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
 for i = 1:num_ces
     loc = ces_loc[i]
@@ -231,11 +231,11 @@ TNBearning_all = zeros(5, 1000)
         efficiency_CES = 0.9
 
         # Grid CES
-        ces_size = [309 309 309 309 309 309 309 309]
+        ces_size = [7.425284391]
         ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
         lb_CEScd_grid = zeros(hour, num_ces)
-        ub_CES_grid = ones(hour) * ces_size
-        Pg_CES0 = ones(hour) * ces_size * 0.5
+        ub_CES_grid = ones(hour) .* ces_size
+        Pg_CES0 = ones(hour) .* ces_size .* 0.5
 
         # save to dictionary for prosumer model
         Param_Prosumer = Dict()
@@ -513,5 +513,5 @@ TNBearning_all = zeros(5, 1000)
     Pout_aux_all[:,:,1:iteration_num-1], λ[:,:,1:iteration_num-1], Pout_all[:,:,1:iteration_num-1], net_load', loc_prosumer)
 end
 
-msg = "ADMM_CES_1 completed."
+msg = "ADMM_CES_2 completed."
 send_notification(msg)

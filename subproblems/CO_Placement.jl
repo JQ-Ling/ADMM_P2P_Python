@@ -27,9 +27,9 @@ function setup_data(bus_sys)
     # 2. Load Prosumer Load Data
     power_consumption_data = DataFrame(CSV.File("$base_path/Power Consumption_$(bus_sys)_bus.csv"))
     power_consumption = Matrix(power_consumption_data) ./ 2 .* LoadScaler
-    power_consumption[:, 26] *= 2
-    power_consumption[:, 34] *= 2
-    power_consumption[:, 51] *= 2
+    power_consumption[:, 26] *= 6
+    power_consumption[:, 34] *= 6
+    power_consumption[:, 51] *= 6
     num_user = size(power_consumption, 2)
     DATA[:num_user] = num_user
     DATA[:raw_load] = power_consumption
