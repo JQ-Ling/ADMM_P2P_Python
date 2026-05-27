@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Task 1",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_1.jl\""
+    },
+    {
+      "label": "Run Task 2",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_2.jl\""
+    },
+    {
+      "label": "🚀 RUN ALL TASKS",
+      "dependsOn": [
+        "Run Task 1",
+        "Run Task 2"
+        ],
+      "dependsOrder": "sequence"
+    }
+  ]
+}
