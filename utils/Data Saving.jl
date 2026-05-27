@@ -129,7 +129,7 @@ function savetoCSV(first, last, train_primal, train_dual, train_P_decision, loc_
     end
 
     config["last_processed_index"] = last
-    open("D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config["config name"]).json", "w") do f
+    open("D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/$(config["config name"]).json", "w") do f
         JSON.print(f, config, 4)
     end
     open("$(dir_path)/config.json", "w") do f
@@ -354,7 +354,7 @@ function savetoNPZ(first, last, train_primal, train_dual, train_P_decision, loc_
     end
 
     config["last_processed_index"] = last
-    open("D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config["config name"]).json", "w") do f
+    open("D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/$(config["config name"]).json", "w") do f
         JSON.print(f, config, 4)
     end
     open("$(dir_path)/config.json", "w") do f

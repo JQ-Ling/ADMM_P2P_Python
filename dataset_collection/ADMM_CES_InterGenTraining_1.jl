@@ -1,7 +1,7 @@
 using JuMP, CSV, DataFrames, Gurobi, Random, Plots, Printf, Dates, NPZ, LinearAlgebra, XLSX, JSON, HTTP
 
 config_name = "config_InterGenTraining_1"
-config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset collection/$(config_name).json"
+config_path = "D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/$(config_name).json"
 config = JSON.parsefile(config_path)
 path = config["project_name"]
 iter_save = config["iter_save"]
@@ -157,8 +157,16 @@ end
         if config["gen_mode"] == 1
             config["last_train_gen_index"] + gen_step > num_user ? config["last_train_gen_index"] = abs.(config["last_train_gen_index"] - num_user) + gen_step : config["last_train_gen_index"] += gen_step
         else
-            config["last_train_gen_index"] + gen_step > num_user ? config["last_train_gen_index"] = gen_step : config["last_train_gen_index"] += gen_step
+            if config["gen_mode_skip"]
+                # Set 3 users for first scenario, then check if within boundary, if it was training steps before
+                config["last_train_gen_index"] == 0 ? config["last_train_gen_index"] = 2 : nothing
+                config["last_train_gen_index"] + 1 > num_user ? config["last_train_gen_index"] = 3 : config["last_train_gen_index"] += 1
+                config["last_train_gen_index"] % gen_step == 0 ? config["last_train_gen_index"] += 1 : nothing
+            else
+                config["last_train_gen_index"] + gen_step > num_user ? config["last_train_gen_index"] = gen_step : config["last_train_gen_index"] += gen_step
+            end
         end
+
 
         _num_user_active = config["last_train_gen_index"]
 
