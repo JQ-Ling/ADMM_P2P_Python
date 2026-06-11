@@ -15,7 +15,7 @@ bus_sys = 69
 
 # (1) Power Consumption.
 # PowerConsumption[Prosumer][Hour]
-char_data_location_1 = "D:/Jacky/Julia-vscode/ADMM_P2P/Power Consumption_$(bus_sys)_bus.csv"
+char_data_location_1 = "D:/Jacky/Python/ADMM_P2P_Python/data/Power Consumption_$(bus_sys)_bus.csv"
 power_consumption_data = (CSV.File(char_data_location_1) |> DataFrame)
 LoadScaler = 10
 power_consumption = Matrix(power_consumption_data) ./2 .* LoadScaler
@@ -30,7 +30,7 @@ println("No. Time Step = ", hour)
 
 # (2) Solar
 # Solar[Hour]
-char_data_location_2 = "D:/Jacky/Julia-vscode/ADMM_P2P/Solar_interpolated_6000.csv"
+char_data_location_2 = "D:/Jacky/Python/ADMM_P2P_Python/data/Solar_interpolated_6000.csv"
 net_load_data = CSV.File(char_data_location_2, header=true) |> DataFrame
 
 SolarScaler = 10
@@ -38,7 +38,7 @@ SolarScaler = 10
 interpolated_solar_scenarios = Matrix(net_load_data) .* SolarScaler
 
 # (6) PTDF
-ptdf_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/radial$(bus_sys)bus_PTDF.csv"
+ptdf_file_location = "D:/Jacky/Python/ADMM_P2P_Python/data/radial$(bus_sys)bus_PTDF.csv"
 ptdf_data = CSV.File(ptdf_file_location, header=false) |> DataFrame
 
 nb_bus = size(ptdf_data, 2)
@@ -46,13 +46,13 @@ nb_branch = size(ptdf_data, 1)
 ptdf = Matrix(ptdf_data)
 
 # (7) Branch limit
-BranchLimit_file_location = "D:/Jacky/Julia-vscode/ADMM_P2P/$(bus_sys)_bus_limit_data.csv"
+BranchLimit_file_location = "D:/Jacky/Python/ADMM_P2P_Python/data/$(bus_sys)_bus_limit_data.csv"
 BranchLimit_data = CSV.File(BranchLimit_file_location, header=true) |> DataFrame
 
 BranchLimit = BranchLimit_data[!, 1] .* 1000
 
 # (8) CES configurations - Number, Locations and Capacity
-ces_loc = [27, 35, 46, 50, 52, 65, 67, 69]
+ces_loc = [2]
 num_ces = length(ces_loc)
 CES_loc_matrix = zeros(Float64, num_ces, nb_bus)
 for i = 1:num_ces
@@ -125,7 +125,6 @@ TNBearning_all = zeros(5, 1000)
             end
         end
 
-        break
         loc_prosumer = zeros(num_user, nb_bus)
         for i in 1:num_user
             loc_prosumer[i, i+1] = 1
@@ -197,10 +196,10 @@ TNBearning_all = zeros(5, 1000)
         ####################################################################################################
         # BuyBP[Prosumer][Time Step]   SellBP[Prosumer][Time Step]
         # BuyPriority[Prosumer][Time Step]   SellPriority[Prosumer][Time Step]
-        bpp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_price_$(bus_sys).csv"
-        spp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_price_$(bus_sys).csv"
-        bp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/buy_priority_$(bus_sys).csv"
-        sp_file = "D:/Jacky/Julia-vscode/ADMM_P2P/sell_priority_$(bus_sys).csv"
+        bpp_file = "D:/Jacky/Python/ADMM_P2P_Python/data/buy_price_$(bus_sys).csv"
+        spp_file = "D:/Jacky/Python/ADMM_P2P_Python/data/sell_price_$(bus_sys).csv"
+        bp_file = "D:/Jacky/Python/ADMM_P2P_Python/data/buy_priority_$(bus_sys).csv"
+        sp_file = "D:/Jacky/Python/ADMM_P2P_Python/data/sell_priority_$(bus_sys).csv"
 
         buy_bp = Matrix(CSV.File(bpp_file, header=false) |> DataFrame)
         sell_bp = Matrix(CSV.File(spp_file, header=false) |> DataFrame)
@@ -241,7 +240,7 @@ TNBearning_all = zeros(5, 1000)
         efficiency_CES = 0.9
 
         # Grid CES
-        ces_size = [309 309 309 309 309 309 309 309]
+        ces_size = [8]
         ub_CEScd_grid = (BatteryCap / 3) * num_user * ones(hour, num_ces)
         lb_CEScd_grid = zeros(hour, num_ces)
         ub_CES_grid = ones(hour) .* ces_size
@@ -265,7 +264,7 @@ TNBearning_all = zeros(5, 1000)
         Param_Prosumer[:load_demamd] = net_load'
         # Param_Prosumer[:bin_CES] = bin_CES
         Param_Prosumer[:bin_CES] = 0
-        # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P_Data/33bus/Param_Prosumer.csv", Param_Prosumer)
+        # CSV.write("D:/Jacky/Python/ADMM_P2P_Python/data_Data/33bus/Param_Prosumer.csv", Param_Prosumer)
 
         # save to dictionary for grid operator model
         Param_Grid = Dict()
@@ -295,7 +294,7 @@ TNBearning_all = zeros(5, 1000)
         Param_Grid[:num_ces]        = num_ces
         Param_Grid[:CES_loc_matrix] = CES_loc_matrix
         Param_Grid[:CES0]           = Pg_CES0
-        # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Param_Grid.csv", Param_Grid)
+        # CSV.write("D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/Param_Grid.csv", Param_Grid)
 
         # parameters inititalize
         num_dec = 4
@@ -476,11 +475,11 @@ TNBearning_all = zeros(5, 1000)
     # TNBearning_all[:,sce] = TNBearn
     # ProfitSave(prosumer_cost,TNBearn)
 
-    # savefig(peplot, "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Fig/primal error.svg")
-    # savefig(deplot, "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Fig/dual error.svg")
-    # savefig(prplot, "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Fig/primal residual.svg")
-    # savefig(drplot, "D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/Fig/dual residual.svg")
-    # CSV.write("D:/Jacky/Julia-vscode/ADMM_P2P/Output/New/OneSce/subproblem_times.csv", DataFrame(hcat(subproblem_times...), :auto), writeheader=false)
+    # savefig(peplot, "D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/Fig/primal error.svg")
+    # savefig(deplot, "D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/Fig/dual error.svg")
+    # savefig(prplot, "D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/Fig/primal residual.svg")
+    # savefig(drplot, "D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/Fig/dual residual.svg")
+    # CSV.write("D:/Jacky/Python/ADMM_P2P_Python/data/Output/New/OneSce/subproblem_times.csv", DataFrame(hcat(subproblem_times...), :auto), writeheader=false)
     
     if iteration_num == max_iteration
         push!(optimal_num, 0)
