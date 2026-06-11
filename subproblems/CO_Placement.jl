@@ -1,7 +1,7 @@
 module Centralized_CES_Model
 
 using JuMP, Gurobi, CSV, DataFrames, LinearAlgebra, XLSX
-include("D:/Jacky/Python/ADMM_P2P_Python/utils/Price_fcn.jl")
+include("D:/Jacky/Python/ADMM_P2P_Python/utils/co_utils.jl")
 
 # ====================================================================
 # GLOBAL CACHE: Stores the heavy 69-bus matrices and CSV data in RAM
@@ -27,9 +27,9 @@ function setup_data(bus_sys)
     # 2. Load Prosumer Load Data
     power_consumption_data = DataFrame(CSV.File("$base_path/Power Consumption_$(bus_sys)_bus.csv"))
     power_consumption = Matrix(power_consumption_data) ./ 2 .* LoadScaler
-    power_consumption[:, 26] *= 6
-    power_consumption[:, 34] *= 6
-    power_consumption[:, 51] *= 6
+    power_consumption[:, 26] *= 10
+    power_consumption[:, 34] *= 10
+    power_consumption[:, 51] *= 10
     num_user = size(power_consumption, 2)
     DATA[:num_user] = num_user
     DATA[:raw_load] = power_consumption
@@ -83,67 +83,12 @@ function setup_data(bus_sys)
     DATA[:P2PTrade] = [16, 38]
     DATA[:beta_tnb] = 1.0
 
+    println("Battery Capacity set to: ", BatteryCap, " kWh")
     println("Data successfully loaded and cached in Module!")
 end
 
 
-function ProfitCal(Result_Grid_buy, Result_Grid_sell, Result_P2P_buy, Result_P2P_sell)
 
-    tnb_cost            = [0.5443, 0.15]
-    hour                = DATA[:hour]
-    num_user            = DATA[:num_user]
-    P2PTrade            = DATA[:P2PTrade]
-    buy_bp              = DATA[:buy_bp]
-    sell_bp             = DATA[:sell_bp]
-    power_consumption   = DATA[:raw_load]
-    net_load            = DATA[:P_load]'
-
-    final_buy_price = sum(buy_bp, dims=1) / num_user
-    final_sell_price = sum(sell_bp, dims=1) / num_user
-
-    totalPower = sum(power_consumption, dims=1)
-    totalP2P = sum((Result_P2P_buy[P2PTrade[1]:P2PTrade[2], :] .* final_buy_price'[P2PTrade[1]:P2PTrade[2]]) - (Result_P2P_sell[P2PTrade[1]:P2PTrade[2], :] .* final_sell_price'[P2PTrade[1]:P2PTrade[2]])
-                    + (Result_Grid_buy[P2PTrade[1]:P2PTrade[2], :] .* tnb_cost[1]) - (Result_Grid_sell[P2PTrade[1]:P2PTrade[2], :] .* tnb_cost[2]), dims = 1)
-    totalTNB = zeros(num_user)
-    for t in 1:hour
-        if (t < P2PTrade[1] || t > P2PTrade[2]) 
-            totalTNB[:] += Result_Grid_buy[t,:]
-        end
-    end
-
-    totalNEM = sum(net_load', dims=1)
-
-    costN = []
-    costP2P = []
-    costP2P_TNB = []
-    costNEM = []
-    reduce_P2P = []
-    reduce_NEM = []
-
-    for i in 1:num_user 
-        append!(costN, ResidentialTariff(totalPower[i]))
-
-        append!(costP2P_TNB, ResidentialTariff(totalTNB[i]))
-        append!(costP2P, costP2P_TNB[i] + totalP2P[i])
-
-        append!(costNEM, ResidentialTariff(totalNEM[i]))
-        costNEM[findall(x->x<0, costNEM)] .= 0
-    end
-
-    for i in 1:num_user
-        append!(reduce_P2P, ((costN[i] - costP2P[i]) / costN[i]) * 100)
-        append!(reduce_NEM, ((costN[i] - costNEM[i]) / costN[i]) * 100)
-    end
-
-    # TNBearn_P2P = sum(Result_P2P_sell[P2PTrade[1]:P2PTrade[2], :] .* (buy_bp'[P2PTrade[1]:P2PTrade[2], :] .- sell_bp'[P2PTrade[1]:P2PTrade[2], :]))
-    TNBearn_P2P = sum(Result_P2P_sell[P2PTrade[1]:P2PTrade[2], :] .* (final_buy_price'[P2PTrade[1]:P2PTrade[2]] .- final_sell_price'[P2PTrade[1]:P2PTrade[2]]))
-    TNBearn_Normal = sum(Result_Grid_buy[P2PTrade[1]:P2PTrade[2], :] .* tnb_cost[1] * 0.15)
-    TNBearn_Selling = sum(Result_Grid_sell[P2PTrade[1]:P2PTrade[2], :] .* (0.35 - tnb_cost[2]))
-
-    TNBearning = ((TNBearn_P2P + TNBearn_Normal + TNBearn_Selling) * 1) + (sum(costP2P_TNB) * 0.15);
-
-    return costP2P, TNBearning
-end
 
 # ====================================================================
 # STEP 2: FITNESS FUNCTION (Called repeatedly by MOMSA)
@@ -232,6 +177,7 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
     @constraint(Central_Model, sum(P_buy, dims=2) .== sum(P_sell, dims=2))
 
     # 2. Grid CES Dynamics
+    # Ensure Grid CES takes only prosumers operations
     @constraint(Central_Model, sum((efficiency_CES .* P_c - P_d ./ efficiency_CES), dims=2) .== sum((efficiency_CES .* Pc_Grid - Pd_Grid ./ efficiency_CES), dims=2))
     for c in 1:num_ces
         @constraint(Central_Model, [i in 1:hour-1],    Pc_Grid[i+1, c] .<= (ub_CES_grid[i, c] .- PCES_Grid[i, c]) ./ efficiency_CES)
@@ -281,12 +227,16 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
         )
 
         # Line Limits
+        # Voltage Limits (0.95 to 1.05 pu)
         @constraint(Central_Model, -DATA[:branch_limit] .<= P_inj[t, :] .<= DATA[:branch_limit])
         @constraint(Central_Model, -DATA[:branch_limit] .<= Q_inj[t, :] .<= DATA[:branch_limit])
-        # Voltage Limits (0.95 to 1.05 pu)
         @constraint(Central_Model, v[t, :] .>= 0.95)
         @constraint(Central_Model, v[t, :] .<= 1.05)
     end
+
+    # --- Disable CES ---
+    # @constraint(Central_Model, Pc_Grid .== 0)
+    # @constraint(Central_Model, Pd_Grid .== 0)
 
     # --- OBJECTIVE FUNCTION ---
     f_p2p = sum(P_buy .* DATA[:buy_priority]') + sum(P_sell .* DATA[:sell_priority]')
@@ -299,7 +249,9 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
     optimize!(Central_Model)
     
     if termination_status(Central_Model) == MOI.OPTIMAL
-        
+        # plotting
+        # plot_all(value.(PCES_Grid), value.(Pc_Grid), value.(Pd_Grid), value.(v), value.(P_inj), value.(Q_inj), DATA[:branch_limit])
+
         # 1. Get the raw values for the Grid CES
         pc_val = value.(Pc_Grid)
         pd_val = value.(Pd_Grid)
