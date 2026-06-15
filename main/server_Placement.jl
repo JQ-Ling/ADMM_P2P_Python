@@ -1,6 +1,11 @@
 # Run this once in Julia: using Pkg; Pkg.add(["Oxygen", "HTTP", "JSON3"])
 using Oxygen, HTTP, JSON3
-include("../subproblems/CO_Placement.jl")
+
+port_num = length(ARGS) > 0 ? parse(Int, ARGS[1]) : 8080
+
+module_used = "CO_Placement_ptdf.jl"
+# include("../subproblems/CO_Placement.jl")
+include("../subproblems/" * module_used)
 using .Centralized_CES_Model
 
 # Initialize the 69-bus data once at startup
@@ -26,5 +31,6 @@ Centralized_CES_Model.setup_data(bus_sys)
     return results
 end
 
-println("Julia Optimization Server running at http://127.0.0.1:8080")
-serve(port=8080)
+println("Julia Optimization Server running at http://127.0.0.1:$port_num")
+println("Loading module: "* module_used)
+serve(port=port_num)
