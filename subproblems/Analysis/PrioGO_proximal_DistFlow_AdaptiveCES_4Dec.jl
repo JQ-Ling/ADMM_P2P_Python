@@ -78,8 +78,8 @@ function Subproblem_Prosumer(Param::Dict{}, Pout_aux, num_user, lamda_u, num_ite
     @constraint(Prosumer_model,                     P_CES[1] .== P_CES[end] + (η * P_c[end]) - (P_d[end] / η))
 
     # To disable CES
-    # @constraint(Prosumer_model, P_c .== 0)
-    # @constraint(Prosumer_model, P_d .== 0)
+    @constraint(Prosumer_model, P_c .== 0)
+    @constraint(Prosumer_model, P_d .== 0)
 
     # Primal definition
     # @constraint(Prosumer_model, P_out .== [P_c; P_d; P_buy; P_sell; Pg_buy; Pg_sell])
@@ -246,15 +246,15 @@ function Subproblem_Grid_Operator(Param::Dict{}, P_out, lamda_u, iteration_num) 
         )
     end
 
-    @constraint(Grid_model, 0.95 .<= v .<= 1.05)
-    @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], P_inj[i, j] .>= -branch_limit[j])
-    @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], P_inj[i, j] .<= branch_limit[j])
-    @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], Q_inj[i, j] .>= -branch_limit[j])
-    @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], Q_inj[i, j] .<= branch_limit[j])
+    # @constraint(Grid_model, 0.95 .<= v .<= 1.05)
+    # @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], P_inj[i, j] .>= -branch_limit[j])
+    # @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], P_inj[i, j] .<= branch_limit[j])
+    # @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], Q_inj[i, j] .>= -branch_limit[j])
+    # @constraint(Grid_model, [i in 1:hour, j in 1:num_branch], Q_inj[i, j] .<= branch_limit[j])
 
     # To disable CES
-    # @constraint(Grid_model, Pc .== 0)
-    # @constraint(Grid_model, Pd .== 0)
+    @constraint(Grid_model, Pc .== 0)
+    @constraint(Grid_model, Pd .== 0)
 
     f_1 = sum(P_out_aux[2*hour+1:3*hour, :] .* PI_buy' + P_out_aux[3*hour+1:4*hour, :] .* PI_sell')
     # f_2 = sum(1 .* (P_out_aux[4*hour+1:5*hour, :]  + P_out_aux[5*hour+1:6*hour, :]))

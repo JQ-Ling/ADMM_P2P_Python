@@ -1,15 +1,36 @@
-# Run this once in Julia: using Pkg; Pkg.add(["Oxygen", "HTTP", "JSON3"])
 using Oxygen, HTTP, JSON3
 
+# 1. Parse Port (Argument 1) - Defaults to 8080 if not provided
 port_num = length(ARGS) > 0 ? parse(Int, ARGS[1]) : 8080
 
-module_used = "CO_Placement_ptdf.jl"
-# include("../subproblems/CO_Placement.jl")
+# 2. Parse Module Choice (Argument 2) - Defaults to "1" if not provided
+module_choice = length(ARGS) > 1 ? ARGS[2] : "1"
+
+if module_choice == "1"
+    module_used = "CO_Placement.jl"
+elseif module_choice == "2"
+    module_used = "CO_Placement_ptdf.jl"
+else
+    println("\n[Warning] Invalid module choice. Defaulting to 1: CO_Placement.jl")
+    module_used = "CO_Placement.jl"
+end
+
+# 3. Parse Bus system Choice (Argument 3) - Defaults to 33 (33 bus) if not provided
+valid_bus_systems = [33, 69]
+bus_sys = length(ARGS) > 2 ? parse(Int, ARGS[3]) : 33
+
+if !(bus_sys in valid_bus_systems)
+    println("\n[Warning] Invalid bus system choice. Defaulting to 33 bus system.")
+    bus_sys = 33
+end
+
+println("=========================================")
+println("Module Choice      : ", module_choice, " -> Using: ", module_used)
+println("Bus System Choice  : ", bus_sys)
 include("../subproblems/" * module_used)
 using .Centralized_CES_Model
 
-# Initialize the 69-bus data once at startup
-bus_sys = 69
+# Initialize the chosen bus data once at startup
 Centralized_CES_Model.setup_data(bus_sys)
 
 # Define the "Endpoint" that MATLAB will call
@@ -31,6 +52,6 @@ Centralized_CES_Model.setup_data(bus_sys)
     return results
 end
 
-println("Julia Optimization Server running at http://127.0.0.1:$port_num")
-println("Loading module: "* module_used)
+println("Server Port        : http://127.0.0.1:$port_num")
+println("=========================================")
 serve(port=port_num)

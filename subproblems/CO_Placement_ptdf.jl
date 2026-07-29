@@ -12,6 +12,7 @@ const DATA = Dict{Symbol, Any}()
 # STEP 1: SETUP FUNCTION (Run this ONCE from MATLAB)
 # ====================================================================
 function setup_data(bus_sys)
+    println("\n*****************************************************")
     println("Initializing $(bus_sys)-bus Centralized Model Data...")
     
     # 1. Basic Parameters
@@ -27,26 +28,44 @@ function setup_data(bus_sys)
     # 2. Load Prosumer Load Data
     power_consumption_data = DataFrame(CSV.File("$base_path/Power Consumption_$(bus_sys)_bus.csv"))
     power_consumption = Matrix(power_consumption_data) ./ 2 .* LoadScaler
-    power_consumption[:, 26] *= 10
-    power_consumption[:, 34] *= 10
-    power_consumption[:, 51] *= 10
     num_user = size(power_consumption, 2)
-    DATA[:num_user] = num_user
-    DATA[:raw_load] = power_consumption
+    DATA[:raw_load] = copy(power_consumption)
+    if bus_sys == 69
+        # Adjust specific prosumer loads for the 69-bus system
+        power_consumption[:, 26] *= 10
+        power_consumption[:, 34] *= 10
+        power_consumption[:, 51] *= 10
+    else
+        # Adjust specific prosumer loads for the 33-bus system
+        power_consumption[:,18] *= 20
+    end
     
     # 3. Load Solar Data
-    net_load_data = DataFrame(CSV.File("$base_path/Solar_interpolated_6000.csv"))
-    solar_scenarios = Matrix(net_load_data) .* SolarScaler
-    solar = solar_scenarios[1, :] # Using scenario 1 for CO
-    DATA[:solar] = solar
+    if bus_sys == 33
+        net_load_data = DataFrame(CSV.File("$base_path/Solar_interpolated.csv", header=false))
+        solar_scenarios = Matrix(net_load_data) .* SolarScaler
+        solar = solar_scenarios[1000, :] # Using scenario 1000 for CO
+    else
+        net_load_data = DataFrame(CSV.File("$base_path/Solar_interpolated_6000.csv"))
+        solar_scenarios = Matrix(net_load_data) .* SolarScaler
+        solar = solar_scenarios[1, :] # Using scenario 1 for CO
+    end
 
     # 4. Calculate Net Load & Prosumer Locations
     pros_solar = Int(ceil(num_user / 2))
     net_load = copy(power_consumption')
-    net_load[pros_solar:end, :] .-= 1.5 * solar'
+    if bus_sys == 33
+        net_load[23:end, :] .-= solar' * 1.5
+        net_load[18, :] .-= solar * 16 * 1.5
+    else
+        net_load[pros_solar:end, :] .-= 1.5 * solar'
+    end
+
     DATA[:P_load] = net_load' # Format: [Hour, Prosumer]
     DATA[:pros_solar] = pros_solar
-    
+    DATA[:solar] = solar
+    DATA[:num_user] = num_user
+
     loc_prosumer = zeros(num_user, bus_sys)
     for i in 1:num_user
         loc_prosumer[i, i+1] = 1 # Shifted by 1 based on your original logic
@@ -86,6 +105,7 @@ function setup_data(bus_sys)
 
     println("Battery Capacity set to: ", BatteryCap, " kWh")
     println("Data successfully loaded and cached in Module!")
+    println("*****************************************************\n")
 end
 
 
@@ -242,20 +262,20 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
             "shape" => size(P_buy),
             "CES_shape" => size(Charge_Discharge_CES),
             "profit" => TNBearning,
-            # "P2P_buy" => value.(P_buy),
-            # "Grid_buy" => value.(Pg_buy),
-            # "P2P_sell" => value.(P_sell),
-            # "Grid_sell" => value.(Pg_sell),
+            "P2P_buy" => value.(P_buy),
+            "Grid_buy" => value.(Pg_buy),
+            "P2P_sell" => value.(P_sell),
+            "Grid_sell" => value.(Pg_sell),
             "Charge_Discharge_CES" => Charge_Discharge_CES,
             "load" => DATA[:raw_load],
             "solar" => DATA[:solar],
             "pros_solar" => DATA[:pros_solar],
 
-            # # debugging outputs
+            # # Power Flow outputs
             # "net_load_kW" => value.(net_load_kW),
-            # "P_inj" => value.(P_inj),
+            "P_inj" => value.(P_inj),
             # "ptdf" => ptdf,
-            # "branch_limit" => DATA[:branch_limit],
+            "branch_limit" => DATA[:branch_limit],
         )
     else
         return Dict("infeasible" => 1) 
