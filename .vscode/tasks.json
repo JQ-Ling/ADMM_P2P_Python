@@ -1,23 +1,58 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // --- THE ACTUAL SCRIPTS ---
     {
-      "label": "Run Task 1",
+      "label": "Task 1",
       "type": "shell",
       "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_1.jl\""
     },
     {
-      "label": "Run Task 2",
+      "label": "Task 2",
       "type": "shell",
       "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_2.jl\""
     },
     {
-      "label": "🚀 RUN ALL TASKS",
-      "dependsOn": [
-        "Run Task 1",
-        "Run Task 2"
-        ],
+      "label": "Task 3",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_3.jl\""
+    },
+    {
+      "label": "Task 4",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_4.jl\""
+    },
+    {
+      "label": "Task 5",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_5.jl\""
+    },
+    {
+      "label": "Task 6",
+      "type": "shell",
+      "command": "julia --project=. \"D:/Jacky/Python/ADMM_P2P_Python/dataset_collection/ADMM_CES_InterGenTraining_6.jl\""
+    },
+
+    // --- THE SEQUENCES (Run in order) ---
+    {
+      "label": "Sequence A (3)",
+      "dependsOn": ["Task 3"],
       "dependsOrder": "sequence"
+    },
+    {
+      "label": "Sequence B (5)",
+      "dependsOn": ["Task 5"],
+      "dependsOrder": "sequence"
+    },
+
+    // --- THE MASTER TASK (Runs Sequences A and B at the same time) ---
+    {
+      "label": "🚀 RUN PARALLEL SEQUENCES",
+      "dependsOn": [
+        "Sequence A (3)",
+        "Sequence B (5)"
+      ],
+      "dependsOrder": "parallel"
     }
   ]
 }

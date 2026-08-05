@@ -403,7 +403,8 @@ end
 function generate_active_user(history_combinations, ledger_for_export, nb_prosumer, _num_user_active, sce, loc_prosumer)
     
     # 1. Calculate the absolute mathematical maximum for this specific user pool
-    max_possible_combinations = binomial(nb_prosumer, _num_user_active)
+    # (BigInt: C(68, 30) already overflows Int64)
+    max_possible_combinations = binomial(big(nb_prosumer), _num_user_active)
     
     # 2. Count how many combinations OF THIS SIZE we have already generated
     # (This assumes history_combinations is a Set or Array of Tuples)

@@ -111,7 +111,7 @@ train_obj = fill(NaN, 5, 5000)
 buy_priority_all = zeros(num_user, nb_hour, 5)
 sell_priority_all = zeros(num_user, nb_hour, 5)
 # prosumer_cost_all = zeros(294,3000)
-prosumer_cost_all = zeros(224,6000)
+prosumer_cost_all = zeros(num_user * 7,6000)
 TNBearning_all = zeros(5,6000)
 
 #######

@@ -1,5 +1,5 @@
 {
-    "config name": "config_InterGenTraining_2",
+    "config name": "config_InterGenTraining_4",
     "proximal decay": false,
     "over-relaxation": false,
     "cap_ces": [
@@ -10,7 +10,7 @@
         183.5212395,
         176.7109142
     ],
-    "sce_start": 1001,
+    "sce_start": 1,
     "iter_save": 50,
     "device used": "AMD",
     "number of decisions": 4,
@@ -27,11 +27,11 @@
     "ADMM_ver": "D:\\Jacky\\Python\\ADMM_P2P_Python\\subproblems\\PrioGO_proximal_DistFlow_AdaptiveCES_4Dec.jl",
     "relaxation parameter": 1.5,
     "bus_sys": 69,
-    "last_processed_index": 2000,
-    "gen_mode": 5,
+    "last_processed_index": 100,
+    "gen_mode": 1,
     "threshold": 0.001,
-    "project_name": "LP_PrioGO-LDF-mulCES-4dec-69bus_train_InterGen-5steps_1000sce",
+    "project_name": "LP_PrioGO-LDF-mulCES-4dec-69bus_test_InterGen_100sce",
     "save_csv": true,
-    "last_train_gen_index": 60,
-    "sce_end": 2000
+    "last_train_gen_index": 3,
+    "sce_end": 100
 }

@@ -5,8 +5,8 @@ using StatsBase # Required for sample()
 # =====================================================================
 function generate_active_user(history_combinations, ledger_for_export, nb_prosumer, _num_user_active, sce, loc_prosumer)
     
-    # Calculate mathematical maximum
-    max_possible_combinations = binomial(nb_prosumer, _num_user_active)
+    # Calculate mathematical maximum (BigInt: C(68, 30) already overflows Int64)
+    max_possible_combinations = binomial(big(nb_prosumer), _num_user_active)
     
     # Count how many we already have of this specific length
     current_count_for_size = count(comb -> length(comb) == _num_user_active, history_combinations)
