@@ -8,6 +8,10 @@ include("D:/Jacky/Python/ADMM_P2P_Python/utils/co_utils.jl")
 # ====================================================================
 const DATA = Dict{Symbol, Any}()
 
+# Per-unit power base (kVA). Used by the LinDistFlow constraint in solve_day and
+# returned so the caller can convert branch flows back to per-unit for the loss.
+const S_BASE = 10000.0
+
 # ====================================================================
 # STEP 1: SETUP FUNCTION (Run this ONCE from MATLAB)
 # ====================================================================
@@ -19,8 +23,8 @@ function setup_data(bus_sys)
 
     # 1. Basic Parameters
     hour = 48                   # Optimisation horizon of ONE day (half-hourly)
-    LoadScaler  = 1
-    SolarScaler = 1
+    LoadScaler  = 0.45
+    SolarScaler = 1.15
     DATA[:bus_sys] = bus_sys
     DATA[:hour] = hour
 
@@ -235,7 +239,7 @@ function solve_day(CES_loc_matrix::Matrix{Float64},
     a_0 = DATA[:a_0]
     A_trans = transpose(A_matrix)
     v_0 = 1.0
-    S_base = 10000.0
+    S_base = S_BASE
     for t in 1:hour
         # Line Flows
         for i in 1:(bus_sys-1)
@@ -290,12 +294,20 @@ function solve_day(CES_loc_matrix::Matrix{Float64},
     # plot_all(value.(PCES_Grid), value.(Pc_Grid), value.(Pd_Grid), value.(v), value.(P_inj), value.(Q_inj), DATA[:branch_limit])
 
     return (
+        objective   = objective_value(Central_Model),
         P_buy       = value.(P_buy),
         P_sell      = value.(P_sell),
         Pg_buy      = value.(Pg_buy),
         Pg_sell     = value.(Pg_sell),
+        P_c         = value.(P_c),
+        P_d         = value.(P_d),
+        P_CES       = value.(P_CES),
         Pc_Grid     = value.(Pc_Grid),
         Pd_Grid     = value.(Pd_Grid),
+        PCES_Grid   = value.(PCES_Grid),
+        v           = value.(v),
+        P_inj       = value.(P_inj),
+        Q_inj       = value.(Q_inj),
     )
 end
 
@@ -329,19 +341,33 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
     P_sell_w    = zeros(tot_hour, num_user)
     Pg_buy_w    = zeros(tot_hour, num_user)
     Pg_sell_w   = zeros(tot_hour, num_user)
+    P_c_w       = zeros(tot_hour, num_user)
+    P_d_w       = zeros(tot_hour, num_user)
+    P_CES_w     = zeros(tot_hour, num_user)
     Pc_Grid_w   = zeros(tot_hour, num_ces)
     Pd_Grid_w   = zeros(tot_hour, num_ces)
+    PCES_Grid_w = zeros(tot_hour, num_ces)
+    v_w         = zeros(tot_hour, bus_sys - 1)
+    P_inj_w     = zeros(tot_hour, bus_sys - 1)
+    Q_inj_w     = zeros(tot_hour, bus_sys - 1)
+    obj_daily   = zeros(num_days)
     cost_daily  = zeros(num_days, num_user)     # ProfitCal costP2P, per day
     profit_daily = zeros(num_days)              # ProfitCal TNBearning, per day
 
-    # 3. Solve day by day. Each day is SOC-cyclic, so the days are independent.
+    # 3. Solve day by day. Each day is SOC-cyclic, so the days are independent -
+    #    one bad day does NOT invalidate the others, so keep going and record
+    #    which days failed. A failed day leaves its slice at zero and is left
+    #    out of the aggregates below.
+    infeasible_days = Int[]
+
     for d in 1:num_days
         rows = set_day!(d)
         res = solve_day(CES_loc_matrix, ub_CES_grid, ub_CEScd_grid, Pg_CES0)
 
         if res === nothing
-            set_day!(1)
-            return Dict("infeasible" => 1)
+            push!(infeasible_days, d)
+            @warn "Day $d is INFEASIBLE - continuing with the remaining days."
+            continue
         end
 
         # ProfitCal is a single-day function: call it while DATA points at day d
@@ -349,12 +375,20 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
         cost_daily[d, :]   = Float64.(pros_cost)
         profit_daily[d]    = TNBearning
 
-        P_buy_w[rows, :]   = res.P_buy
-        P_sell_w[rows, :]  = res.P_sell
-        Pg_buy_w[rows, :]  = res.Pg_buy
-        Pg_sell_w[rows, :] = res.Pg_sell
-        Pc_Grid_w[rows, :] = res.Pc_Grid
-        Pd_Grid_w[rows, :] = res.Pd_Grid
+        obj_daily[d]        = res.objective
+        P_buy_w[rows, :]    = res.P_buy
+        P_sell_w[rows, :]   = res.P_sell
+        Pg_buy_w[rows, :]   = res.Pg_buy
+        Pg_sell_w[rows, :]  = res.Pg_sell
+        P_c_w[rows, :]      = res.P_c
+        P_d_w[rows, :]      = res.P_d
+        P_CES_w[rows, :]    = res.P_CES
+        Pc_Grid_w[rows, :]  = res.Pc_Grid
+        Pd_Grid_w[rows, :]  = res.Pd_Grid
+        PCES_Grid_w[rows,:] = res.PCES_Grid
+        v_w[rows, :]        = res.v
+        P_inj_w[rows, :]    = res.P_inj
+        Q_inj_w[rows, :]    = res.Q_inj
     end
 
     # 4. Restore the full-week view of the cache
@@ -367,21 +401,72 @@ function evaluate_fitness(ces_sizes::Vector{Float64}, ces_locs::Vector{Float64})
     # Map each CES unit's net charge to its specific Bus Location
     for z in 1:num_ces
         # Net charge = Charge - Discharge
-        Charge_Discharge_CES[:, ces_bus[z]] .= Pc_Grid_w[:, z] .- Pd_Grid_w[:, z]
+        Charge_Discharge_CES[:, ces_bus[z]] .+= Pc_Grid_w[:, z] .- Pd_Grid_w[:, z]
     end
 
     # 6. Return the Dictionary (weekly totals = sum of the daily values)
+    #    Everything the solve produced is returned - same layout as CO_ROI_stage2.jl.
+    solved = setdiff(1:num_days, infeasible_days)
+
+    # The network summaries must ignore the zero rows a failed day leaves behind,
+    # otherwise v_min reads 0.0 the moment any day fails.
+    solved_rows = isempty(infeasible_days) ? collect(1:tot_hour) :
+                  reduce(vcat, [collect(day_range(d)) for d in solved]; init = Int[])
+    # 0.0 rather than NaN: JSON3 refuses to serialise NaN, which would blow up
+    # the /evaluate response. Check "num_days_solved" before trusting these.
+    v_s = isempty(solved_rows) ? [0.0] : v_w[solved_rows, :]
+    P_s = isempty(solved_rows) ? zeros(1, bus_sys - 1) : P_inj_w[solved_rows, :]
+    Q_s = isempty(solved_rows) ? zeros(1, bus_sys - 1) : Q_inj_w[solved_rows, :]
+
     return Dict(
-        "infeasible" => 0,
-        "cost" => vec(sum(cost_daily, dims=1)),
-        "shape" => size(P_buy_w),
-        "CES_shape" => size(Charge_Discharge_CES),
-        "profit" => sum(profit_daily),
-        # "P2P_buy" => P_buy_w,
-        # "Grid_buy" => Pg_buy_w,
-        # "P2P_sell" => P_sell_w,
-        # "Grid_sell" => Pg_sell_w,
-        "Charge_Discharge_CES" => Charge_Discharge_CES,
+        # 1 if ANY day failed. The arrays below still hold every day that solved,
+        # with the failed days left as zeros - check "infeasible_days" to see which.
+        "infeasible" => isempty(infeasible_days) ? 0 : 1,
+        "infeasible_days" => infeasible_days,       # Vector of day indices, empty if all solved
+        "num_days_solved" => length(solved),
+        # --- scalars / summaries (sums over the SOLVED days only) ---
+        "cost" => vec(sum(cost_daily[solved, :], dims=1)),  # Vector [num_user]
+        "profit" => sum(profit_daily[solved]),              # Scalar
+        "objective" => sum(obj_daily[solved]),              # Scalar, sum of the daily LP objectives
+        "cost_daily" => cost_daily,                 # [num_days, num_user]
+        "profit_daily" => profit_daily,             # Vector [num_days]
+        "objective_daily" => obj_daily,             # Vector [num_days]
+        "num_days" => num_days,
+        "shape" => size(P_buy_w),                   # (tot_hour, num_user)
+        "CES_shape" => size(Charge_Discharge_CES),  # (tot_hour, bus_sys)
+        # --- grid CES operation ---
+        "Charge_Discharge_CES" => Charge_Discharge_CES,   # [tot_hour, bus_sys]
+        "CES_SOC_grid" => PCES_Grid_w,                    # [tot_hour, num_ces]
+        "Pc_Grid" => Pc_Grid_w,                           # [tot_hour, num_ces]
+        "Pd_Grid" => Pd_Grid_w,                           # [tot_hour, num_ces]
+        "ces_sizes" => ces_sizes,                         # this particle's fleet
+        "ces_locs" => ces_bus,                            # bus indices (rounded)
+        # --- prosumer CES (+ve = charging, -ve = discharging) ---
+        "Charge_Discharge_user" => P_c_w .- P_d_w,        # [tot_hour, num_user]
+        "P_c" => P_c_w,
+        "P_d" => P_d_w,
+        "P_CES" => P_CES_w,
+        # --- trading ---
+        "P2P_buy" => P_buy_w,
+        "P2P_sell" => P_sell_w,
+        "Grid_buy" => Pg_buy_w,
+        "Grid_sell" => Pg_sell_w,
+        # --- network ---
+        "voltage" => v_w,                                        # [tot_hour, bus_sys-1]
+        "P_inj" => P_inj_w,                                      # [tot_hour, bus_sys-1]
+        "Q_inj" => Q_inj_w,                                      # [tot_hour, bus_sys-1]
+        # summaries below cover the SOLVED days only (a failed day is all zeros)
+        "v_min" => minimum(v_s),
+        "v_max" => maximum(v_s),
+        "branch_P_max" => vec(maximum(abs.(P_s), dims=1)),       # [bus_sys-1]
+        "branch_Q_max" => vec(maximum(abs.(Q_s), dims=1)),       # [bus_sys-1]
+        "branch_limit" => DATA[:branch_limit],                   # [num_branch]
+        # Needed to recover line loss from the LinDistFlow solution:
+        #   loss_pu = r * (P_pu^2 + Q_pu^2) / v      (P_pu = P_inj / S_base)
+        "branch_r" => diag(DATA[:D_r]),                          # [bus_sys-1] per-unit R
+        "branch_x" => diag(DATA[:D_x]),                          # [bus_sys-1] per-unit X
+        "S_base" => S_BASE,                                      # kVA
+        # --- raw inputs (full week) ---
         "load" => DATA[:raw_load_full],
         "solar" => DATA[:solar_full],
         "pros_solar" => DATA[:pros_solar],

@@ -60,7 +60,7 @@ if stage_choice == "2" && bus_sys != 33
 end
 
 println("=========================================")
-println("Module Choice      : ", module_choice, " -> Using: ", module_used)
+println("Module Choice      : ", module_used)
 println("Bus System Choice  : ", bus_sys)
 include("../subproblems/" * module_used)
 using .Centralized_CES_Model
